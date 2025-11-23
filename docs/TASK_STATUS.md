@@ -1,0 +1,75 @@
+# Tasks
+
+- [x] Create FAP Architecture Plan <!-- id: 0 -->
+- [x] User Review of Architecture Plan <!-- id: 1 -->
+- [x] Task A: Build Dart Flutter Agent <!-- id: 2 -->
+    - [x] WebSocket server <!-- id: 3 -->
+    - [x] RPC request handler <!-- id: 4 -->
+    - [x] Selector parser <!-- id: 5 -->
+    - [x] Semantics/Widget tree indexer <!-- id: 6 -->
+    - [x] Gesture injection utilities <!-- id: 7 -->
+    - [x] Error capturing hooks <!-- id: 8 -->
+    - [x] Performance metric hooks <!-- id: 9 -->
+    - [x] Screenshot capture utilities <!-- id: 10 -->
+- [x] Task B: Build Selector Engine <!-- id: 11 -->
+    - [x] Tokenizer <!-- id: 12 -->
+    - [x] Parser <!-- id: 13 -->
+    - [x] AST <!-- id: 14 -->
+    - [x] Matcher engine <!-- id: 15 -->
+    - [x] Logical operators <!-- id: 16 -->
+    - [x] Custom metadata support <!-- id: 17 -->
+    - [x] Unit tests <!-- id: 18 -->
+- [x] Task C: Build Node/TypeScript Client SDK <!-- id: 19 -->
+    - [x] Connection/session system <!-- id: 20 -->
+    - [x] Query utilities <!-- id: 21 -->
+    - [x] Actions (tap, scroll, drag, enterText) <!-- id: 22 -->
+    - [x] Wait helpers <!-- id: 23 -->
+    - [x] Error/screenshot helpers <!-- id: 24 -->
+    - [x] Types + documentation <!-- id: 25 -->
+    - [x] Automated tests against sample app <!-- id: 26 -->
+- [x] Task D: Build FAP Test Runner (CLI) <!-- id: 27 -->
+    - [x] CLI implementation <!-- id: 28 -->
+    - [x] Test reporter <!-- id: 29 -->
+    - [x] CI integration example <!-- id: 30 -->
+- [x] Task E: Build Example Flutter App <!-- id: 31 -->
+    - [x] Basic widgets (Buttons, Lists, TextFields) <!-- id: 32 -->
+    - [x] Navigation <!-- id: 33 -->
+    - [x] Custom widgets with metadata <!-- id: 34 -->
+    - [x] Error button & Scrollable area <!-- id: 35 -->
+- [x] **Verification & Documentation**
+    - [x] Create E2E test script ([fap_client/src/e2e_test.ts](file:///Users/mkr/local-coding/flutter-ai-testing/fap_client/src/e2e_test.ts))
+    - [x] Run verification against example app
+    - [x] Document usage and API
+    - [x] Verify core capabilities (list, match, tap, etc.) <!-- id: 39 -->
+    - [x] AI navigability demo <!-- id: 40 -->
+    - [-] Security checks (Skipped for MVP) <!-- id: 41 -->
+    - [x] Documentation (README, ARCHITECTURE, etc.) <!-- id: 42 -->
+- [x] **Task F: Advanced Actions** <!-- id: 43 -->
+    - [x] Scroll (vertical/horizontal) <!-- id: 44 -->
+    - [x] Drag & Drop <!-- id: 45 -->
+    - [x] Long Press & Double Tap <!-- id: 46 -->
+- [ ] **Task G: Observability & Diagnostics** <!-- id: 47 -->
+    - [x] Hook into `FlutterError.onError` <!-- id: 48 -->
+    - [x] Implement [getErrors](file:///Users/mkr/local-coding/flutter-ai-testing/fap_agent/lib/src/utils/errors.dart#42-46) <!-- id: 49 -->
+    - [ ] Implement `getPerformanceMetrics` (FrameTiming) <!-- id: 50 -->
+    - [ ] Implement `getLogs` <!-- id: 51 -->
+    - [ ] Async error handling (`PlatformDispatcher`) <!-- id: 60 -->
+- [ ] **Task H: Advanced Selectors & Metadata** <!-- id: 52 -->
+    - [ ] `FapMeta` widget implementation <!-- id: 53 -->
+    - [ ] Child/Descendant selectors in parser <!-- id: 54 -->
+    - [ ] Regex support in selectors <!-- id: 55 -->
+- [ ] **Task I: Robustness & Security** <!-- id: 56 -->
+    - [ ] Auth token support <!-- id: 57 -->
+    - [ ] `waitFor` helpers in Client SDK <!-- id: 58 -->
+    - [ ] Route awareness <!-- id: 59 -->
+- [x] **Task J: Fix Phase 1 Gaps (CRITICAL)** <!-- id: 61 -->
+    - [x] Fix network binding (localhost only) <!-- id: 62 -->
+    - [x] Fix type selector matching (WidgetInspector) <!-- id: 63 -->
+    - [x] Fix key selector matching <!-- id: 64 -->
+    - [x] Fix key selector matching <!-- id: 64 -->
+    - [x] Fix tap action (global coordinates & fallback) <!-- id: 69 -->
+    - [x] Fix CSS-style selector regression (`Type[attr=val]`) <!-- id: 70 -->
+- [ ] **Task K: Production Readiness** <!-- id: 65 -->
+    - [ ] Compile-time disable flag <!-- id: 66 -->
+    - [ ] Environment variable gate <!-- id: 67 -->
+    - [ ] IP allowlist configuration <!-- id: 68 -->
