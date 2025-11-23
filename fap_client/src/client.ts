@@ -129,12 +129,4 @@ export class FapClient {
     async doubleTap(selector: string): Promise<any> {
         return this.request('doubleTap', { selector });
     }
-
-    async getPerformanceMetrics(): Promise<{ build: number; raster: number; total: number }[]> {
-        return this.request('getPerformanceMetrics');
-    }
-
-    async getLogs(): Promise<string[]> {
-        return this.request('getLogs');
-    }
 }
