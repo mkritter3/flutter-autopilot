@@ -102,9 +102,11 @@ class Selector {
         final k = kv[0].trim();
         var v = kv.sublist(1).join('=').trim(); // Handle values with =
         
-        // Remove quotes
-        if ((v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'"))) {
-          v = v.substring(1, v.length - 1);
+        // Remove quotes and unescape
+        if ((v.startsWith('"') && v.endsWith('"'))) {
+          v = v.substring(1, v.length - 1).replaceAll(r'\"', '"');
+        } else if ((v.startsWith("'") && v.endsWith("'"))) {
+          v = v.substring(1, v.length - 1).replaceAll(r"\'", "'");
         }
 
         // Check for regex value: ~/pattern/
@@ -123,9 +125,15 @@ class Selector {
           case 'type': type = v; break;
           default: attributes[k] = v;
         }
+      } else {
+        // No '=' found, check if it's a bare type name
+        if (type == null && RegExp(r'^[a-zA-Z0-9_]+$').hasMatch(part)) {
+          type = part;
+        }
       }
     }
 
+    print('Parsed Selector: input="$input" -> attributes=$attributes, regexAttributes=$regexAttributes');
     return Selector(
       id: id,
       text: text,
@@ -171,6 +179,7 @@ class Selector {
     var current = StringBuffer();
     inQuote = false;
     inBracket = false;
+    bool inRegex = false; // New flag for regex
 
     for (int i = 0; i < input.length; i++) {
       final char = input[i];
@@ -184,7 +193,24 @@ class Selector {
       } else if (char == ']' && !inQuote) {
         inBracket = false;
         current.write(char);
-      } else if (!inQuote && !inBracket) {
+      } else if (char == '~' && !inQuote && !inBracket && !inRegex) {
+        // Potential start of regex
+        if (i + 1 < input.length && input[i+1] == '/') {
+           inRegex = true;
+           current.write(char); // write ~
+           i++; // consume /
+           current.write(input[i]); // write /
+           continue;
+        }
+        current.write(char);
+      } else if (char == '/' && inRegex) {
+        // Potential end of regex
+        // Check if previous char was not escape
+        if (i > 0 && input[i-1] != '\\') {
+           inRegex = false;
+        }
+        current.write(char);
+      } else if (!inQuote && !inBracket && !inRegex) {
         if (char == '>') {
           if (current.isNotEmpty) tokens.add(current.toString().trim());
           tokens.add('>');
@@ -229,7 +255,7 @@ class Selector {
       if (char == '"' || char == "'") {
         inQuote = !inQuote;
         current.write(char);
-      } else if ((char == '&' || char == ',') && !inQuote) {
+      } else if ((char == '&' || char == ',' || char == ' ') && !inQuote) {
         if (current.isNotEmpty) parts.add(current.toString());
         current.clear();
       } else {

@@ -9,15 +9,20 @@ import 'package:flutter/rendering.dart';
 import 'src/server/rpc_handler.dart';
 import 'src/server/ws_server.dart';
 
+import 'src/widgets/fap_navigator_observer.dart';
+
 export 'src/widgets/fap_meta.dart';
+export 'src/widgets/fap_navigator_observer.dart';
 
 class FapConfig {
   final int port;
   final bool enabled;
+  final String? secretToken;
 
   const FapConfig({
     this.port = 9001,
     this.enabled = true,
+    this.secretToken,
   });
 }
 
@@ -26,6 +31,7 @@ class FapAgent {
   final FapConfig config;
   FapServer? _server;
   SemanticsHandle? _semanticsHandle;
+  final FapNavigatorObserver navigatorObserver = FapNavigatorObserver();
 
   // Observability Data
   final ListQueue<FrameTiming> _frameTimings = ListQueue<FrameTiming>(100);
@@ -81,7 +87,11 @@ class FapAgent {
     if (!config.enabled) return;
     
     final rpcHandler = FapRpcHandlerImpl(agent: this);
-    _server = FapServer(port: config.port, rpcHandler: rpcHandler);
+    _server = FapServer(
+      port: config.port, 
+      rpcHandler: rpcHandler,
+      secretToken: config.secretToken,
+    );
     await _server!.start();
   }
 

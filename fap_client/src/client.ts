@@ -4,31 +4,40 @@ import { v4 as uuidv4 } from 'uuid';
 export interface FapConfig {
     url?: string;
     timeoutMs?: number;
+    secretToken?: string;
 }
 
 export interface FapElement {
-    id: string;
-    type?: string;
-    key?: string;
+    id: number;
+    rect: { x: number; y: number; w: number; h: number };
     label?: string;
     value?: string;
     hint?: string;
-    rect: { x: number; y: number; w: number; h: number };
-    actions: string[];
+    key?: string;
+    metadata?: Record<string, string>;
 }
 
 export class FapClient {
     private ws: WebSocket | null = null;
     private pendingRequests = new Map<string, { resolve: (val: any) => void; reject: (err: any) => void }>();
     private url: string;
+    private config: FapConfig;
 
     constructor(config: FapConfig = {}) {
+        this.config = config;
         this.url = config.url || 'ws://localhost:9001';
     }
 
     async connect(): Promise<void> {
         return new Promise((resolve, reject) => {
-            this.ws = new WebSocket(this.url);
+            const options: any = {};
+            if (this.config.secretToken) {
+                options.headers = {
+                    Authorization: `Bearer ${this.config.secretToken}`
+                };
+            }
+
+            this.ws = new WebSocket(this.url, options);
 
             this.ws.on('open', () => {
                 resolve();
@@ -82,12 +91,48 @@ export class FapClient {
                     this.pendingRequests.delete(id);
                     reject(new Error(`Request ${method} timed out`));
                 }
-            }, 10000);
+            }, this.config.timeoutMs || 10000);
         });
     }
 
     async getTree(): Promise<FapElement[]> {
         return this.request<FapElement[]>('getTree');
+    }
+
+    async getRoute(): Promise<string | null> {
+        return this.request<string | null>('getRoute');
+    }
+
+    async waitFor(selector: string, timeoutMs: number = 5000): Promise<FapElement> {
+        const startTime = Date.now();
+        while (Date.now() - startTime < timeoutMs) {
+            try {
+                const elements = await this.request<FapElement[]>('getTree');
+
+                // Simple parser
+                let match: FapElement | undefined;
+                if (selector.startsWith('key=')) {
+                    const key = selector.split('=')[1].replace(/['"]/g, '');
+                    match = elements.find(e => e.key === key);
+                } else if (selector.startsWith('text=')) {
+                    const text = selector.split('=')[1].replace(/['"]/g, '');
+                    match = elements.find(e => e.label === text || e.value === text || e.hint === text);
+                } else if (selector.startsWith('label=')) {
+                    const label = selector.split('=')[1].replace(/['"]/g, '');
+                    match = elements.find(e => e.label === label);
+                } else if (selector.startsWith('test-id=')) {
+                    const testId = selector.split('=')[1].replace(/['"]/g, '');
+                    match = elements.find(e => e.metadata && e.metadata['test-id'] === testId);
+                }
+
+                if (match) return match;
+
+            } catch (e) {
+                // ignore
+            }
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        throw new Error(`Timeout waiting for element: ${selector}`);
     }
 
     async tap(selector: string): Promise<any> {

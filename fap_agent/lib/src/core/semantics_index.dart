@@ -58,7 +58,16 @@ class SemanticsIndexer {
 
   final Map<int, FapElement> _nodeIdToElement = {};
 
-  void reindex() {
+  DateTime _lastReindex = DateTime.fromMillisecondsSinceEpoch(0);
+  static const Duration _throttleDuration = Duration(milliseconds: 15);
+
+  void reindex({bool force = false}) {
+    final now = DateTime.now();
+    if (!force && now.difference(_lastReindex) < _throttleDuration) {
+      return;
+    }
+    _lastReindex = now;
+
     _elements.clear();
     _nodeIdToElement.clear();
     _nextId = 1;
@@ -309,7 +318,10 @@ class SemanticsIndexer {
              }
         }
         
-        if (!matched) return false;
+        if (!matched) {
+          print('Regex mismatch: ${entry.key}=${pattern.pattern} against label="${data.label}", value="${data.value}"');
+          return false;
+        }
       }
       
       return true;

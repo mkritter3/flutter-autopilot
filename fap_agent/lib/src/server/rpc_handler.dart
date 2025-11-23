@@ -35,6 +35,10 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return _indexer.elements.values.map((e) => e.toJson()).toList();
     });
 
+    server.registerMethod('getRoute', ([json_rpc.Parameters? params]) {
+      return agent.navigatorObserver.currentRoute;
+    });
+
     server.registerMethod('tap', (json_rpc.Parameters params) async {
       final selectorString = params['selector'].asString;
       final selector = Selector.parse(selectorString);

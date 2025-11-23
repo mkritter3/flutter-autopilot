@@ -6,6 +6,7 @@ void main() {
   FapAgent.init(const FapConfig(
     port: 9001,
     enabled: true,
+    secretToken: 'my-secret-token',
   ));
 
   runApp(const MyApp());
@@ -19,6 +20,7 @@ class MyApp extends StatelessWidget {
     SemanticsBinding.instance.ensureSemantics();
     return MaterialApp(
       title: 'FAP Example',
+      navigatorObservers: [FapAgent.instance.navigatorObserver],
       initialRoute: '/',
       routes: {
         '/': (context) => const HomeScreen(),

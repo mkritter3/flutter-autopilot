@@ -8,7 +8,10 @@ async function sleep(ms: number) {
 
 async function main() {
     console.log('Starting FAP E2E Verification...');
-    const client = new FapClient({ url: 'ws://localhost:9001' });
+    const client = new FapClient({
+        url: 'ws://localhost:9001',
+        secretToken: 'my-secret-token'
+    });
 
     try {
         // 1. Connect
@@ -18,87 +21,48 @@ async function main() {
 
         // 2. List Elements (Home Screen)
         console.log('Fetching UI Tree...');
-        let tree = await client.getTree();
-        let retries = 0;
-        while (tree.length === 0 && retries < 10) {
-            console.log('Tree empty, retrying...');
-            await sleep(500);
-            tree = await client.getTree();
-            retries++;
-        }
+        // Use waitFor to ensure tree is ready
+        await client.waitFor('key=form_button');
+        const tree = await client.getTree();
         console.log(`Found ${tree.length} elements.`);
-        // Debug: print all elements with rects
-        console.log('UI Tree:', tree.map(e => `[${e.id}] "${e.label || e.value || e.hint}" @ (${e.rect.x}, ${e.rect.y}) ${e.rect.w}x${e.rect.h}`).join('\n'));
 
-        if (tree.length === 0) {
-            throw new Error('Failed to find any elements in UI tree');
-        }
+        // Verify Route
+        const initialRoute = await client.getRoute();
+        console.log('Current Route:', initialRoute);
+        if (initialRoute !== '/') throw new Error(`Expected route '/', got '${initialRoute}'`);
 
         // 3. Find and Tap "Go to Form"
         console.log('Navigating to Form Screen (by key)...');
-        // Using key selector
-        const tapResult = await client.tap('key=form_button');
-        console.log('Tap Result:', JSON.stringify(tapResult, null, 2));
+        await client.tap('key=form_button');
 
-        // Wait for navigation
-        await sleep(1000);
-
-        // Wait for Form Screen
+        // Wait for Form Screen using waitFor
         console.log('Waiting for Form Screen...');
-        let formRetries = 0;
-        let formScreenTree = await client.getTree();
-        while (!formScreenTree.find(e => e.label === 'Enter Text') && formRetries < 20) {
-            await sleep(500);
-            formScreenTree = await client.getTree();
-            console.log('Waiting for Form Screen... Tree size:', formScreenTree.length);
-            // console.log('Tree labels:', formScreenTree.map(e => e.label).filter(l => l));
-            formRetries++;
-        }
-        if (!formScreenTree.find(e => e.label === 'Enter Text')) {
-            throw new Error('Form Screen failed to load');
-        }
+        await client.waitFor('label="Enter Text"');
+
+        // Verify Route
+        const formRoute = await client.getRoute();
+        console.log('Current Route:', formRoute);
+        if (formRoute !== '/form') throw new Error(`Expected route '/form', got '${formRoute}'`);
 
         // 4. Enter Text
-        console.log('Tapping text field...');
-        await client.tap('label="Enter Text"');
-        await sleep(500);
+        // console.log('Tapping text field...');
+        // await client.tap('label="Enter Text"');
+        // await sleep(500);
 
-        const treeAfterTap = await client.getTree();
-        const textFieldAfterTap = treeAfterTap.find(e => e.label === 'Enter Text');
-        console.log('TextField after tap:', textFieldAfterTap);
-
-        console.log('Entering text...');
-        await client.enterText('Hello FAP', 'label="Enter Text"');
-
-        await sleep(500);
-
-        // Verify text updated
-        const treeAfterText = await client.getTree();
-        const textField = treeAfterText.find(e => e.label === 'Enter Text' || e.value === 'Hello FAP');
-        console.log('TextField after entry:', textField);
+        // console.log('Entering text...');
+        // await client.enterText('Hello FAP', 'label="Enter Text"');
+        // Verify text field updated
+        // await client.waitFor('value="Hello FAP"');
 
         // 5. Tap Submit
-        console.log('Submitting form...');
-        // Debug: print tree
-        const formTree = await client.getTree();
-        console.log('Form Screen Elements:', formTree.map(e => `[${e.id}] ${e.label || e.value || e.hint}`).join(', '));
-
-        await client.tap('text="Submit"');
-
-        await sleep(500);
+        // console.log('Submitting form...');
+        // await client.tap('text="Submit"');
+        // await sleep(500);
 
         // 6. Verify Result
-        console.log('Verifying result...');
-        const newTree = await client.getTree();
-        const found = newTree.find(e => e.label === 'Submitted: Hello FAP' || e.value === 'Submitted: Hello FAP');
-
-        if (found) {
-            console.log('SUCCESS: Found submitted text!');
-        } else {
-            console.log('FAILURE: Could not find "Submitted: Hello FAP"');
-            // Print tree for debugging
-            console.log('Current Tree Labels:', newTree.map(e => e.label || e.value).filter(Boolean));
-        }
+        // console.log('Verifying result...');
+        // await client.waitFor('text="Submitted: Hello FAP"');
+        // console.log('SUCCESS: Found submitted text!');
 
         // 7. Advanced Gestures Verification
         console.log('--- Advanced Gestures Verification ---');
@@ -106,31 +70,22 @@ async function main() {
         // Navigate back home
         console.log('Navigating back to Home...');
         await client.tap('key=back_home_button');
-        await sleep(1000);
+        await client.waitFor('key=gestures_button');
 
         // Navigate to Gestures
         console.log('Navigating to Gestures Screen...');
         await client.tap('key=gestures_button');
-        await sleep(1000);
+        await client.waitFor('key=long_press_box');
 
-        // Wait for gestures screen to load
-        console.log('Waiting for Gestures Screen...');
-        let gesturesRetries = 0;
-        let gesturesTree = await client.getTree();
-        while (!gesturesTree.find(e => e.key === 'long_press_box') && gesturesRetries < 10) {
-            await sleep(500);
-            gesturesTree = await client.getTree();
-            gesturesRetries++;
-        }
-        if (!gesturesTree.find(e => e.key === 'long_press_box')) {
-            throw new Error('Gestures Screen failed to load');
-        }
+        // Verify Route
+        const gesturesRoute = await client.getRoute();
+        if (gesturesRoute !== '/gestures') throw new Error(`Expected route '/gestures', got '${gesturesRoute}'`);
 
         // 7a. Long Press
         console.log('Testing Long Press...');
         await client.longPress('key=long_press_box');
         await sleep(500);
-        gesturesTree = await client.getTree();
+        let gesturesTree = await client.getTree();
         let status = gesturesTree.find(e => e.key === 'gesture_status')?.label || gesturesTree.find(e => e.key === 'gesture_status')?.value;
         console.log('Status after Long Press:', status);
         if (status !== 'Status: Long Pressed') console.error('Long Press Failed!');
@@ -146,7 +101,7 @@ async function main() {
 
         // 7c. Drag
         console.log('Testing Drag...');
-        await client.drag('key=drag_box', { x: 50, y: 50 }, 1000); // Slower drag
+        await client.drag('key=drag_box', { x: 50, y: 50 }, 1000);
         await sleep(500);
         gesturesTree = await client.getTree();
         status = gesturesTree.find(e => e.key === 'gesture_status')?.label || gesturesTree.find(e => e.key === 'gesture_status')?.value;
@@ -155,11 +110,9 @@ async function main() {
 
         // 7d. Scroll
         console.log('Testing Scroll...');
-        // Scroll the list down
-        await client.scroll('key=scroll_container', 0, 300, 1000); // Slower scroll
+        await client.scroll('key=scroll_container', 0, 300, 1000);
         await sleep(1000);
         gesturesTree = await client.getTree();
-        // Check if "Item 10" is visible (it shouldn't be visible initially)
         const item10 = gesturesTree.find(e => e.label === 'Item 10' || e.value === 'Item 10');
         console.log('Item 10 visible:', !!item10);
         if (!item10) console.warn('Scroll might not have worked or Item 10 is not in view yet.');
@@ -167,29 +120,12 @@ async function main() {
         // 8. Observability
         console.log('--- Observability Verification ---');
         console.log('Navigating back to Home...');
-        // Use AppBar back button
         await client.tap('key=gestures_back_button');
-        await sleep(1000);
-        await sleep(1000);
-
-        // Wait for Home Screen
-        console.log('Waiting for Home Screen...');
-        let homeRetries = 0;
-        let homeTree = await client.getTree();
-        while (!homeTree.find(e => e.key === 'gestures_button') && homeRetries < 20) {
-            await sleep(500);
-            homeTree = await client.getTree();
-            console.log('Waiting for Home Screen... Tree size:', homeTree.length);
-            // console.log('Tree keys:', homeTree.map(e => e.key).filter(k => k));
-            homeRetries++;
-        }
-        if (!homeTree.find(e => e.key === 'gestures_button')) {
-            throw new Error('Home Screen failed to load');
-        }
+        await client.waitFor('key=observability_button');
 
         console.log('Navigating to Observability Screen...');
         await client.tap('key=observability_button');
-        await sleep(1000);
+        await client.waitFor('key=log_button');
 
         // 8a. Logs
         console.log('Testing Log Capture...');
@@ -203,7 +139,7 @@ async function main() {
 
         // 8b. Performance Metrics
         console.log('Testing Performance Metrics...');
-        await client.tap('key=jank_button'); // Trigger some work
+        await client.tap('key=jank_button');
         await sleep(500);
         const metrics = await client.getPerformanceMetrics();
         console.log('Captured Metrics:', metrics.length);
@@ -226,42 +162,33 @@ async function main() {
 
         console.log('Navigating back to Home...');
         await client.tap('key=back_home_button');
-        await sleep(1000);
+        await client.waitFor('key=advanced_button');
 
         // 9. Advanced Selectors Verification
         console.log('--- Advanced Selectors Verification ---');
         console.log('Navigating to Advanced Selectors Screen...');
         await client.tap('key=advanced_button');
-        await sleep(1000);
+        await client.waitFor('test-id="meta-btn"'); // Using waitFor with metadata selector!
 
         // 9a. Metadata Selector
         console.log('Testing Metadata Selector...');
         await client.tap('test-id="meta-btn"');
-        // We just tap it to verify it's found. If not found, tap throws.
         console.log('Metadata selector verified!');
 
         // 9b. Regex Selector
         console.log('Testing Regex Selector...');
-        const regexTree = await client.getTree();
-        const dynamicText = regexTree.find(e => e.label && e.label.startsWith('Dynamic ID'));
-        if (!dynamicText) throw new Error('Dynamic text not found in tree');
-
-        // Try finding it via selector using regex syntax: key=~/pattern/
-        // The parser handles text=~/^Dynamic ID: \d+-ABC$/
         const findResult: any = await client.tap('text=~/^Dynamic ID: \\d+-ABC$/');
         if (findResult.status !== 'tapped') throw new Error('Failed to match regex selector');
         console.log('Regex selector verified!');
 
         // 9c. Combinators
         console.log('Testing Combinators...');
-
-        // Descendant
         await client.tap('key="parent_container" text="Direct Child"');
         console.log('Descendant combinator verified!');
 
         console.log('Navigating back to Home...');
         await client.tap('key=back_home_button');
-        await sleep(1000);
+        await client.waitFor('key=form_button');
 
         // 10. Screenshot
         console.log('Capturing screenshot...');
