@@ -1,0 +1,20 @@
+name: fap_agent
+description: A starting point for Dart libraries or applications.
+version: 1.0.0
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.9.2
+
+# Add regular dependencies here.
+dependencies:
+  web_socket_channel: ^3.0.3
+  json_rpc_2: ^4.0.0
+  stream_channel: ^2.1.4
+  flutter:
+    sdk: flutter
+  # path: ^1.9.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.28.0
