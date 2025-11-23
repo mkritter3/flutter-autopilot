@@ -30,7 +30,25 @@ class Selector {
     // e.g. "text=Submit & role=button"
     // or "id=fap-1"
     
-    final parts = input.split('&');
+    var processedInput = input.trim();
+    
+    // 1. Check for CSS-style selector: Type[attr=val]
+    // e.g. Button[text="Save"]
+    final cssRegex = RegExp(r'^([a-zA-Z0-9_]+)\[(.*)\]$');
+    final match = cssRegex.firstMatch(processedInput);
+    if (match != null) {
+      type = match.group(1);
+      processedInput = match.group(2) ?? '';
+    }
+
+    // 2. Parse attributes (key=value pairs)
+    // e.g. "text=Submit & role=button"
+    // or inside brackets: "text="Save""
+    
+    // Split by & or just parse the remaining string
+    // If it was a CSS selector, processedInput is the content inside []
+    
+    final parts = processedInput.split(RegExp(r'[&,]')); // Allow & or , as separator
     for (var part in parts) {
       part = part.trim();
       if (part.isEmpty) continue;
@@ -62,7 +80,7 @@ class Selector {
             key = v;
             break;
           case 'type':
-            type = v;
+            type = v; // Allow overriding type if specified explicitly
             break;
           default:
             attributes[k] = v;
