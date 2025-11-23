@@ -228,7 +228,42 @@ async function main() {
         await client.tap('key=back_home_button');
         await sleep(1000);
 
-        // 9. Screenshot
+        // 9. Advanced Selectors Verification
+        console.log('--- Advanced Selectors Verification ---');
+        console.log('Navigating to Advanced Selectors Screen...');
+        await client.tap('key=advanced_button');
+        await sleep(1000);
+
+        // 9a. Metadata Selector
+        console.log('Testing Metadata Selector...');
+        await client.tap('test-id="meta-btn"');
+        // We just tap it to verify it's found. If not found, tap throws.
+        console.log('Metadata selector verified!');
+
+        // 9b. Regex Selector
+        console.log('Testing Regex Selector...');
+        const regexTree = await client.getTree();
+        const dynamicText = regexTree.find(e => e.label && e.label.startsWith('Dynamic ID'));
+        if (!dynamicText) throw new Error('Dynamic text not found in tree');
+
+        // Try finding it via selector using regex syntax: key=~/pattern/
+        // The parser handles text=~/^Dynamic ID: \d+-ABC$/
+        const findResult: any = await client.tap('text=~/^Dynamic ID: \\d+-ABC$/');
+        if (findResult.status !== 'tapped') throw new Error('Failed to match regex selector');
+        console.log('Regex selector verified!');
+
+        // 9c. Combinators
+        console.log('Testing Combinators...');
+
+        // Descendant
+        await client.tap('key="parent_container" text="Direct Child"');
+        console.log('Descendant combinator verified!');
+
+        console.log('Navigating back to Home...');
+        await client.tap('key=back_home_button');
+        await sleep(1000);
+
+        // 10. Screenshot
         console.log('Capturing screenshot...');
         const screenshot = await client.captureScreenshot();
         const screenshotPath = path.resolve('e2e_screenshot.png');

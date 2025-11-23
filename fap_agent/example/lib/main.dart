@@ -27,6 +27,7 @@ class MyApp extends StatelessWidget {
         '/form': (context) => const FormScreen(),
         '/gestures': (context) => const GesturesScreen(),
         '/observability': (context) => const ObservabilityScreen(),
+        '/advanced': (context) => const AdvancedSelectorsScreen(),
       },
     );
   }
@@ -71,6 +72,12 @@ class HomeScreen extends StatelessWidget {
               key: const Key('observability_button'),
               onPressed: () => Navigator.pushNamed(context, '/observability'),
               child: const Text('Go to Observability'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              key: const Key('advanced_button'),
+              onPressed: () => Navigator.pushNamed(context, '/advanced'),
+              child: const Text('Go to Advanced Selectors'),
             ),
             const SizedBox(height: 20),
             Semantics(
@@ -340,6 +347,66 @@ class ObservabilityScreen extends StatelessWidget {
               },
               child: const Text('Trigger Jank'),
             ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              key: const Key('back_home_button'),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Back to Home'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AdvancedSelectorsScreen extends StatelessWidget {
+  const AdvancedSelectorsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Advanced Selectors')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 1. FapMeta Tagging
+            FapMeta(
+              metadata: {'test-id': 'meta-btn', 'custom-tag': 'priority'},
+              child: ElevatedButton(
+                onPressed: () {},
+                child: const Text('Meta Button'),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // 2. Nested Structure for Combinators
+            Semantics(
+              key: const Key('parent_container'),
+              explicitChildNodes: true,
+              container: true,
+              label: 'Parent Container',
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(border: Border.all(color: Colors.blue)),
+                child: Column(
+                  children: [
+                    const Text('Direct Child'),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(border: Border.all(color: Colors.red)),
+                      child: const Text('Descendant Child'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // 3. Regex Target
+            const Text('Dynamic ID: 12345-ABC'),
+            
             const SizedBox(height: 20),
             ElevatedButton(
               key: const Key('back_home_button'),
