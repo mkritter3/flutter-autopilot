@@ -35,9 +35,9 @@ async function main() {
         }
 
         // 3. Find and Tap "Go to Form"
-        console.log('Navigating to Form Screen...');
-        // Using text selector
-        const tapResult = await client.tap('text="Go to Form"');
+        console.log('Navigating to Form Screen (by key)...');
+        // Using key selector
+        const tapResult = await client.tap('key=form_button');
         console.log('Tap Result:', JSON.stringify(tapResult, null, 2));
 
         // Wait for navigation

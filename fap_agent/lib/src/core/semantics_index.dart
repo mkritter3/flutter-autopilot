@@ -1,21 +1,27 @@
 import 'package:flutter/rendering.dart';
-
+import 'package:flutter/widgets.dart';
 import 'selector_parser.dart';
 
 class FapElement {
   final String id;
   final SemanticsNode node;
   final Rect globalRect;
+  String? type;
+  String? key;
 
   FapElement({
     required this.id,
     required this.node,
     required this.globalRect,
+    this.type,
+    this.key,
   });
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
+      'type': type ?? 'Unknown',
+      'key': key ?? '',
       'label': node.label,
       'value': node.value,
       'hint': node.hint,
@@ -26,19 +32,11 @@ class FapElement {
         'h': globalRect.height,
       },
       'actions': _getActions(node.getSemanticsData().actions),
-      // 'role': node.getSemanticsData(). // Role is not directly exposed as a string easily, need to infer or use debug properties
     };
   }
 
   List<String> _getActions(int actionsMask) {
     final List<String> result = [];
-    // SemanticsAction.values is a Map<int, SemanticsAction> in stable, but might be List in some versions?
-    // The error said "List<SemanticsAction>". So let's try iterating directly.
-    // But wait, if it's a List, it doesn't have .values.
-    // Let's assume it is a Map in the version I am using if .values failed on List.
-    // Wait, the error was: "The getter 'values' isn't defined for the type 'List<SemanticsAction>'".
-    // This CONFIRMS it is a List. So I should remove .values.
-    
     for (final action in SemanticsAction.values) {
       if ((actionsMask & action.index) != 0) {
         result.add(action.name);
@@ -58,10 +56,9 @@ class SemanticsIndexer {
     _elements.clear();
     _nextId = 1;
     
-    print('SemanticsIndexer: Checking renderViews...');
+    // 1. Index Semantics
     for (final view in RendererBinding.instance.renderViews) {
       final owner = view.owner?.semanticsOwner;
-      print('SemanticsIndexer: View=$view, Owner=$owner, RootNode=${owner?.rootSemanticsNode}');
       if (owner?.rootSemanticsNode != null) {
         _traverse(owner!.rootSemanticsNode!, Matrix4.identity());
       }
@@ -74,31 +71,20 @@ class SemanticsIndexer {
          _traverse(rootOwner!.rootSemanticsNode!, Matrix4.identity());
        }
     }
+
+    // 2. Enrich with Widget Type/Key info
+    _enrichElements();
     
     print('SemanticsIndexer: Indexed ${_elements.length} elements.');
   }
 
   void _traverse(SemanticsNode node, Matrix4 parentTransform) {
-    // Log node details
-    // print('Node ${node.id}: Rect=${node.rect}, Transform=${node.transform}');
-    // print('  Actions: ${node.getSemanticsData().actions}');
-
-    // Calculate transform for this node
-    // node.transform transforms from node to parent.
-    // So nodeGlobalTransform (node to global) = parentTransform (parent to global) * node.transform (node to parent)
     final Matrix4 nodeGlobalTransform = node.transform != null
         ? parentTransform * node.transform!
         : parentTransform;
 
     if (!node.isInvisible) {
-      // If rect is local, we apply nodeGlobalTransform.
-      // If rect is in parent, we apply parentTransform.
-      // Data suggests rect is local (0,0) while transform has translation.
-      // So we use nodeGlobalTransform.
       final globalRect = MatrixUtils.transformRect(nodeGlobalTransform, node.rect);
-      
-      print('  GlobalRect: $globalRect');
-      
       final id = 'fap-${_nextId++}';
       
       _elements[id] = FapElement(
@@ -114,8 +100,73 @@ class SemanticsIndexer {
     });
   }
 
+  void _enrichElements() {
+    final rootElement = WidgetsBinding.instance.rootElement;
+    if (rootElement != null) {
+      // Create lookup map for O(1) access
+      final semanticsMap = <int, FapElement>{};
+      for (final el in _elements.values) {
+        semanticsMap[el.node.id] = el;
+      }
+
+      _traverseElements(rootElement, semanticsMap);
+    }
+  }
+
+  void _traverseElements(Element element, Map<int, FapElement> semanticsMap) {
+    final renderObject = element.renderObject;
+    if (renderObject != null && renderObject.debugSemantics != null) {
+      final semanticsId = renderObject.debugSemantics!.id;
+      final fapElement = semanticsMap[semanticsId];
+
+      if (fapElement != null) {
+        // Found match!
+
+        // 1. Check current element for Key/Type
+        _extractInfo(element, fapElement);
+
+        // 2. Walk up ancestors if Key or Type is missing
+        if (fapElement.key == null || fapElement.type == null) {
+          element.visitAncestorElements((ancestor) {
+            _extractInfo(ancestor, fapElement);
+            // Stop if we found a Key, as that's usually the "target" widget.
+            if (fapElement.key != null) return false;
+            return true;
+          });
+        }
+      }
+    }
+
+    element.visitChildren((child) => _traverseElements(child, semanticsMap));
+  }
+
+  void _extractInfo(Element element, FapElement fapElement) {
+    // Extract Key
+    if (fapElement.key == null && element.widget.key != null) {
+      final key = element.widget.key!;
+      if (key is ValueKey<String>) {
+        fapElement.key = key.value;
+      } else {
+         String keyStr = key.toString();
+         if (keyStr.startsWith("[<'") && keyStr.endsWith("'>]")) {
+           keyStr = keyStr.substring(3, keyStr.length - 3);
+         } else if (keyStr.startsWith("[<") && keyStr.endsWith(">]")) {
+           keyStr = keyStr.substring(2, keyStr.length - 2);
+         }
+         fapElement.key = keyStr;
+      }
+      // If we found a key, use this widget's type
+      fapElement.type = element.widget.runtimeType.toString();
+    }
+
+    // Extract Type (heuristic)
+    if (fapElement.type == null && !element.widget.runtimeType.toString().startsWith('_')) {
+       fapElement.type = element.widget.runtimeType.toString();
+    }
+  }
+
   List<FapElement> find(Selector selector) {
-    reindex(); // Always reindex before search for now
+    reindex(); 
     
     return _elements.values.where((element) {
       final data = element.node.getSemanticsData();
@@ -127,36 +178,24 @@ class SemanticsIndexer {
       if (selector.text != null && data.label != selector.text && data.value != selector.text && data.hint != selector.text) return false;
       if (selector.label != null && data.label != selector.label) return false;
       
-      // Match Role (heuristic based on actions or flags)
+      // Match Role
       if (selector.role != null) {
-        // Simple role matching
         if (selector.role == 'button' && !element.node.hasFlag(SemanticsFlag.isButton)) return false;
         if (selector.role == 'textField' && !element.node.hasFlag(SemanticsFlag.isTextField)) return false;
-        // Add more roles as needed
       }
 
-      // Match Key (not directly available in SemanticsNode without debug builds or custom metadata)
-      // For MVP, we might rely on 'label' or 'hint' acting as key if key is not available.
-      // Or we need to traverse WidgetInspector to find the widget key.
-      // This is a known limitation of Semantics-only approach.
-      // If we want keys, we need to map SemanticsNode back to Widget.
-      // For now, let's assume key matching is not supported or relies on label.
+      // Match Key
       if (selector.key != null) {
-        // Check if label or hint matches key for now
-        if (data.label != selector.key && data.hint != selector.key) return false;
+        if (element.key != selector.key) return false;
       }
 
-      // Match Type (also hard with just SemanticsNode)
+      // Match Type
       if (selector.type != null) {
-        // Cannot easily check widget type from SemanticsNode alone.
-        // We would need to use WidgetInspectorService.
-        // For MVP, ignore or fail?
-        // Let's ignore type matching for now or log warning.
+        if (element.type != selector.type) return false;
       }
 
       // Match Attributes
       for (final entry in selector.attributes.entries) {
-        // Check if any string property matches
         if (data.label != entry.value && data.value != entry.value && data.hint != entry.value) return false;
       }
       

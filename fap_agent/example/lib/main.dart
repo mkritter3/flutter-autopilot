@@ -42,16 +42,19 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             ElevatedButton(
+              key: const Key('details_button'),
               onPressed: () => Navigator.pushNamed(context, '/details'),
               child: const Text('Go to Details'),
             ),
             const SizedBox(height: 10),
             ElevatedButton(
+              key: const Key('list_button'),
               onPressed: () => Navigator.pushNamed(context, '/list'),
               child: const Text('Go to List'),
             ),
             const SizedBox(height: 10),
             ElevatedButton(
+              key: const Key('form_button'),
               onPressed: () => Navigator.pushNamed(context, '/form'),
               child: const Text('Go to Form'),
             ),
