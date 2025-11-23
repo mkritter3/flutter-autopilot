@@ -21,6 +21,13 @@ class FapServer {
 
   Future<void> start() async {
     try {
+      // Secondary Gate: Environment Variable
+      final envEnabled = Platform.environment['FAP_ENABLED'];
+      if (envEnabled != null && envEnabled.toLowerCase() == 'false') {
+        print('FAP Agent disabled via FAP_ENABLED environment variable.');
+        return;
+      }
+
       _server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
       print('FAP Agent listening on ws://localhost:$port');
 

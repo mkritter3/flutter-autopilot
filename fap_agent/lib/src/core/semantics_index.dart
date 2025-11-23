@@ -48,6 +48,25 @@ class FapElement {
     }
     return result;
   }
+  bool get isInteractable {
+    // 1. Check if invisible
+    if (node.isInvisible) return false;
+    if (node.isMergedIntoParent) return false;
+
+    // 2. Check if disabled
+    if (node.hasFlag(SemanticsFlag.hasEnabledState) && !node.hasFlag(SemanticsFlag.isEnabled)) {
+      return false;
+    }
+
+    // 3. Check if offscreen (basic check)
+    // We need screen size for this. For now, let's assume if width/height is 0 it's not interactable.
+    if (globalRect.width <= 0 || globalRect.height <= 0) return false;
+    
+    // Note: Checking against screen bounds requires passing window size to FapElement or checking here.
+    // For now, 0-size check is a good start.
+    
+    return true;
+  }
 }
 
 class SemanticsIndexer {
@@ -264,8 +283,57 @@ class SemanticsIndexer {
       
       // Match Role
       if (selector.role != null) {
-        if (selector.role == 'button' && !element.node.hasFlag(SemanticsFlag.isButton)) return false;
-        if (selector.role == 'textField' && !element.node.hasFlag(SemanticsFlag.isTextField)) return false;
+        final role = selector.role!;
+        bool roleMatched = false;
+        
+        // Map common roles to SemanticsFlags
+        switch (role) {
+          case 'button':
+            if (element.node.hasFlag(SemanticsFlag.isButton)) roleMatched = true;
+            break;
+          case 'textField':
+            if (element.node.hasFlag(SemanticsFlag.isTextField)) roleMatched = true;
+            break;
+          case 'slider':
+            if (element.node.hasFlag(SemanticsFlag.isSlider)) roleMatched = true;
+            break;
+          case 'switch':
+          case 'toggle':
+            if (element.node.hasFlag(SemanticsFlag.hasToggledState)) roleMatched = true;
+            break;
+          case 'checkbox':
+            if (element.node.hasFlag(SemanticsFlag.hasCheckedState)) roleMatched = true;
+            break;
+          case 'image':
+            if (element.node.hasFlag(SemanticsFlag.isImage)) roleMatched = true;
+            break;
+          case 'header':
+            if (element.node.hasFlag(SemanticsFlag.isHeader)) roleMatched = true;
+            break;
+          case 'link':
+            if (element.node.hasFlag(SemanticsFlag.isLink)) roleMatched = true;
+            break;
+          case 'list':
+            // Heuristic: has children and scrollable? 
+            // SemanticsFlag doesn't have explicit 'isList'.
+            // But we can check if it's a scroll container?
+            // For now, let's stick to explicit flags.
+            break;
+          default:
+            // Try to match flag name case-insensitively
+            for (final flag in SemanticsFlag.values) {
+               if (flag.toString().split('.').last.toLowerCase() == role.toLowerCase()) {
+                 if (element.node.hasFlag(flag)) roleMatched = true;
+                 break;
+               }
+               // Also try 'is' prefix removal (e.g. role='button' matches isButton)
+               if (flag.toString().split('.').last.toLowerCase() == 'is${role.toLowerCase()}') {
+                 if (element.node.hasFlag(flag)) roleMatched = true;
+                 break;
+               }
+            }
+        }
+        if (!roleMatched) return false;
       }
 
       // Match Key

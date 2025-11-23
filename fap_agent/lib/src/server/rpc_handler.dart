@@ -48,9 +48,11 @@ class FapRpcHandlerImpl implements FapRpcHandler {
         throw json_rpc.RpcException(100, 'Element not found: $selectorString');
       }
       
-      // Tap the first match
       final element = elements.first;
-      // print('RPC: Tapping element ${element.id} at ${element.globalRect}');
+      if (!element.isInteractable) {
+        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+      }
+
       final debugInfo = await _executor.tap(element.globalRect);
       
       return {
@@ -76,10 +78,11 @@ class FapRpcHandlerImpl implements FapRpcHandler {
           throw json_rpc.RpcException(100, 'Element not found: $selectorString');
         }
         final element = elements.first;
+        if (!element.isInteractable) {
+          throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+        }
         await _executor.enterText(element.node, text);
       } else {
-        // If no selector, maybe use focused element?
-        // For now, require selector or throw.
         throw json_rpc.RpcException(100, 'Selector required for enterText');
       }
       
@@ -117,7 +120,12 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       final elements = _indexer.find(Selector.parse(selectorString));
       if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
       
-      return await _executor.scroll(elements.first.globalRect, dx, dy, duration: Duration(milliseconds: durationMs));
+      final element = elements.first;
+      if (!element.isInteractable) {
+        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+      }
+
+      return await _executor.scroll(element.globalRect, dx, dy, duration: Duration(milliseconds: durationMs));
     });
 
     server.registerMethod('drag', (json_rpc.Parameters params) async {
@@ -129,13 +137,24 @@ class FapRpcHandlerImpl implements FapRpcHandler {
 
       final elements = _indexer.find(Selector.parse(selectorString));
       if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
-      final start = elements.first.globalRect.center;
+      
+      final element = elements.first;
+      if (!element.isInteractable) {
+        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+      }
+      
+      final start = element.globalRect.center;
 
       Offset end;
       if (targetSelectorString.isNotEmpty) {
         final targets = _indexer.find(Selector.parse(targetSelectorString));
         if (targets.isEmpty) throw json_rpc.RpcException(100, 'Target element not found: $targetSelectorString');
-        end = targets.first.globalRect.center;
+        
+        final target = targets.first;
+        if (!target.isInteractable) {
+          throw json_rpc.RpcException(102, 'Target element is not interactable: $targetSelectorString');
+        }
+        end = target.globalRect.center;
       } else {
         end = start.translate(dx, dy);
       }
@@ -150,7 +169,12 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       final elements = _indexer.find(Selector.parse(selectorString));
       if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
       
-      return await _executor.longPress(elements.first.globalRect, duration: Duration(milliseconds: durationMs));
+      final element = elements.first;
+      if (!element.isInteractable) {
+        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+      }
+      
+      return await _executor.longPress(element.globalRect, duration: Duration(milliseconds: durationMs));
     });
 
     server.registerMethod('doubleTap', (json_rpc.Parameters params) async {
@@ -159,7 +183,12 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       final elements = _indexer.find(Selector.parse(selectorString));
       if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
       
-      return await _executor.doubleTap(elements.first.globalRect);
+      final element = elements.first;
+      if (!element.isInteractable) {
+        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+      }
+      
+      return await _executor.doubleTap(element.globalRect);
     });
   }
 }

@@ -29,11 +29,19 @@ class Selector {
     this.combinator,
   });
 
+  static final Map<String, Selector> _cache = {};
+
   static Selector parse(String input) {
+    if (_cache.containsKey(input)) {
+      return _cache[input]!;
+    }
+
     final tokens = _tokenize(input);
     if (tokens.isEmpty) return Selector();
 
-    return _buildChain(tokens);
+    final selector = _buildChain(tokens);
+    _cache[input] = selector;
+    return selector;
   }
 
   static Selector _buildChain(List<String> tokens) {

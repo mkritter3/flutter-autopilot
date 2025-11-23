@@ -19,10 +19,17 @@ class FapConfig {
   final bool enabled;
   final String? secretToken;
 
+  final int maxFrameTimings;
+  final int maxLogs;
+  final int maxErrors;
+
   const FapConfig({
     this.port = 9001,
-    this.enabled = true,
+    this.enabled = !kReleaseMode,
     this.secretToken,
+    this.maxFrameTimings = 100,
+    this.maxLogs = 1000,
+    this.maxErrors = 100,
   });
 }
 
@@ -34,11 +41,15 @@ class FapAgent {
   final FapNavigatorObserver navigatorObserver = FapNavigatorObserver();
 
   // Observability Data
-  final ListQueue<FrameTiming> _frameTimings = ListQueue<FrameTiming>(100);
-  final ListQueue<String> _logs = ListQueue<String>(1000);
-  final ListQueue<String> _errors = ListQueue<String>(100);
+  late final ListQueue<FrameTiming> _frameTimings;
+  late final ListQueue<String> _logs;
+  late final ListQueue<String> _errors;
 
-  FapAgent._(this.config);
+  FapAgent._(this.config) {
+    _frameTimings = ListQueue<FrameTiming>(config.maxFrameTimings);
+    _logs = ListQueue<String>(config.maxLogs);
+    _errors = ListQueue<String>(config.maxErrors);
+  }
 
   static FapAgent get instance => _instance!;
 
@@ -61,7 +72,7 @@ class FapAgent {
     SchedulerBinding.instance.addTimingsCallback((timings) {
       for (final timing in timings) {
         _frameTimings.add(timing);
-        if (_frameTimings.length > 100) _frameTimings.removeFirst();
+        if (_frameTimings.length > config.maxFrameTimings) _frameTimings.removeFirst();
       }
     });
 
@@ -70,7 +81,7 @@ class FapAgent {
     debugPrint = (String? message, {int? wrapWidth}) {
       if (message != null) {
         _logs.add('${DateTime.now().toIso8601String()}: $message');
-        if (_logs.length > 1000) _logs.removeFirst();
+        if (_logs.length > config.maxLogs) _logs.removeFirst();
       }
       originalDebugPrint(message, wrapWidth: wrapWidth);
     };
@@ -78,7 +89,7 @@ class FapAgent {
     // 3. Async Errors
     PlatformDispatcher.instance.onError = (error, stack) {
       _errors.add('${DateTime.now().toIso8601String()}: $error\n$stack');
-      if (_errors.length > 100) _errors.removeFirst();
+      if (_errors.length > config.maxErrors) _errors.removeFirst();
       return false; // Allow error to propagate
     };
   }
