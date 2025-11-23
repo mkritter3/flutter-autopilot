@@ -85,7 +85,71 @@ async function main() {
             console.log('Current Tree Labels:', newTree.map(e => e.label || e.value).filter(Boolean));
         }
 
-        // 6. Capture Screenshot
+        // 7. Advanced Gestures Verification
+        console.log('--- Advanced Gestures Verification ---');
+
+        // Navigate back home
+        console.log('Navigating back to Home...');
+        await client.tap('key=back_home_button');
+        await sleep(1000);
+
+        // Navigate to Gestures
+        console.log('Navigating to Gestures Screen...');
+        await client.tap('key=gestures_button');
+        await sleep(1000);
+
+        // Wait for gestures screen to load
+        console.log('Waiting for Gestures Screen...');
+        let gesturesRetries = 0;
+        let gesturesTree = await client.getTree();
+        while (!gesturesTree.find(e => e.key === 'long_press_box') && gesturesRetries < 10) {
+            await sleep(500);
+            gesturesTree = await client.getTree();
+            gesturesRetries++;
+        }
+        if (!gesturesTree.find(e => e.key === 'long_press_box')) {
+            throw new Error('Gestures Screen failed to load');
+        }
+
+        // 7a. Long Press
+        console.log('Testing Long Press...');
+        await client.longPress('key=long_press_box');
+        await sleep(500);
+        gesturesTree = await client.getTree();
+        let status = gesturesTree.find(e => e.key === 'gesture_status')?.label || gesturesTree.find(e => e.key === 'gesture_status')?.value;
+        console.log('Status after Long Press:', status);
+        if (status !== 'Status: Long Pressed') console.error('Long Press Failed!');
+
+        // 7b. Double Tap
+        console.log('Testing Double Tap...');
+        await client.doubleTap('key=double_tap_box');
+        await sleep(500);
+        gesturesTree = await client.getTree();
+        status = gesturesTree.find(e => e.key === 'gesture_status')?.label || gesturesTree.find(e => e.key === 'gesture_status')?.value;
+        console.log('Status after Double Tap:', status);
+        if (status !== 'Status: Double Tapped') console.error('Double Tap Failed!');
+
+        // 7c. Drag
+        console.log('Testing Drag...');
+        await client.drag('key=drag_box', { x: 50, y: 50 }, 1000); // Slower drag
+        await sleep(500);
+        gesturesTree = await client.getTree();
+        status = gesturesTree.find(e => e.key === 'gesture_status')?.label || gesturesTree.find(e => e.key === 'gesture_status')?.value;
+        console.log('Status after Drag:', status);
+        if (!status?.includes('Dragging')) console.error('Drag Failed!');
+
+        // 7d. Scroll
+        console.log('Testing Scroll...');
+        // Scroll the list down
+        await client.scroll('key=scroll_container', 0, 300, 1000); // Slower scroll
+        await sleep(1000);
+        gesturesTree = await client.getTree();
+        // Check if "Item 10" is visible (it shouldn't be visible initially)
+        const item10 = gesturesTree.find(e => e.label === 'Item 10' || e.value === 'Item 10');
+        console.log('Item 10 visible:', !!item10);
+        if (!item10) console.warn('Scroll might not have worked or Item 10 is not in view yet.');
+
+        // 8. Capture Screenshot
         console.log('Capturing screenshot...');
         const screenshot = await client.captureScreenshot();
         const screenshotPath = path.resolve('e2e_screenshot.png');

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:ui';
 import 'package:json_rpc_2/json_rpc_2.dart' as json_rpc;
 
 import '../core/actions.dart';
@@ -88,6 +89,60 @@ class FapRpcHandlerImpl implements FapRpcHandler {
         throw json_rpc.RpcException(101, 'Screenshot failed');
       }
       return {'base64': base64Encode(bytes)};
+    });
+
+    server.registerMethod('scroll', (json_rpc.Parameters params) async {
+      final selectorString = params['selector'].asString;
+      final dx = params['dx'].asNum.toDouble();
+      final dy = params['dy'].asNum.toDouble();
+      final durationMs = params['durationMs'].asIntOr(300);
+
+      final elements = _indexer.find(Selector.parse(selectorString));
+      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+      
+      return await _executor.scroll(elements.first.globalRect, dx, dy, duration: Duration(milliseconds: durationMs));
+    });
+
+    server.registerMethod('drag', (json_rpc.Parameters params) async {
+      final selectorString = params['selector'].asString;
+      final targetSelectorString = params['targetSelector'].asStringOr('');
+      final dx = params['dx'].asNumOr(0).toDouble();
+      final dy = params['dy'].asNumOr(0).toDouble();
+      final durationMs = params['durationMs'].asIntOr(300);
+
+      final elements = _indexer.find(Selector.parse(selectorString));
+      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+      final start = elements.first.globalRect.center;
+
+      Offset end;
+      if (targetSelectorString.isNotEmpty) {
+        final targets = _indexer.find(Selector.parse(targetSelectorString));
+        if (targets.isEmpty) throw json_rpc.RpcException(100, 'Target element not found: $targetSelectorString');
+        end = targets.first.globalRect.center;
+      } else {
+        end = start.translate(dx, dy);
+      }
+
+      return await _executor.drag(start, end, duration: Duration(milliseconds: durationMs));
+    });
+
+    server.registerMethod('longPress', (json_rpc.Parameters params) async {
+      final selectorString = params['selector'].asString;
+      final durationMs = params['durationMs'].asIntOr(800);
+
+      final elements = _indexer.find(Selector.parse(selectorString));
+      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+      
+      return await _executor.longPress(elements.first.globalRect, duration: Duration(milliseconds: durationMs));
+    });
+
+    server.registerMethod('doubleTap', (json_rpc.Parameters params) async {
+      final selectorString = params['selector'].asString;
+
+      final elements = _indexer.find(Selector.parse(selectorString));
+      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+      
+      return await _executor.doubleTap(elements.first.globalRect);
     });
   }
 }

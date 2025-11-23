@@ -8,6 +8,8 @@ export interface FapConfig {
 
 export interface FapElement {
     id: string;
+    type?: string;
+    key?: string;
     label?: string;
     value?: string;
     hint?: string;
@@ -103,5 +105,28 @@ export class FapClient {
 
     async getErrors(): Promise<any[]> {
         return this.request<any[]>('getErrors');
+    }
+
+    async scroll(selector: string, dx: number, dy: number, durationMs: number = 300): Promise<any> {
+        return this.request('scroll', { selector, dx, dy, durationMs });
+    }
+
+    async drag(selector: string, targetSelectorOrOffset: string | { x: number; y: number }, durationMs: number = 300): Promise<any> {
+        const params: any = { selector, durationMs };
+        if (typeof targetSelectorOrOffset === 'string') {
+            params.targetSelector = targetSelectorOrOffset;
+        } else {
+            params.dx = targetSelectorOrOffset.x;
+            params.dy = targetSelectorOrOffset.y;
+        }
+        return this.request('drag', params);
+    }
+
+    async longPress(selector: string, durationMs: number = 800): Promise<any> {
+        return this.request('longPress', { selector, durationMs });
+    }
+
+    async doubleTap(selector: string): Promise<any> {
+        return this.request('doubleTap', { selector });
     }
 }
