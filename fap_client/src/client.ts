@@ -147,6 +147,14 @@ export class FapClient {
         await this.request('enterText', { text, selector });
     }
 
+    async setText(selector: string, text: string): Promise<void> {
+        await this.request('setText', { selector, text });
+    }
+
+    async setSelection(selector: string, base: number, extent: number): Promise<void> {
+        await this.request('setSelection', { selector, base, extent });
+    }
+
     async captureScreenshot(): Promise<Buffer> {
         const res = await this.request<{ base64: string }>('captureScreenshot');
         return Buffer.from(res.base64, 'base64');

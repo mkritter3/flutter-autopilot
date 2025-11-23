@@ -148,6 +148,13 @@ class ActionExecutor {
     }
   }
 
+  Future<void> setSelection(SemanticsNode node, int base, int extent) async {
+    print('ActionExecutor: setSelection ($base, $extent) on node ${node.id}');
+    if (node.owner != null) {
+      node.owner!.performAction(node.id, SemanticsAction.setSelection, TextSelection(baseOffset: base, extentOffset: extent));
+    }
+  }
+
   void _dispatchPointerEvent(PointerEvent event) {
     GestureBinding.instance.handlePointerEvent(event);
   }

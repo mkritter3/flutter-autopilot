@@ -106,6 +106,68 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     properties: {},
                 },
             },
+            {
+                name: "drag",
+                description: "Drag an element to another element or by an offset.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        selector: { type: "string", description: "The element to drag." },
+                        target_selector: { type: "string", description: "The element to drag to (optional)." },
+                        dx: { type: "number", description: "X offset to drag (optional, used if target_selector not provided)." },
+                        dy: { type: "number", description: "Y offset to drag (optional, used if target_selector not provided)." },
+                        duration_ms: { type: "number", description: "Duration of drag in ms (default 300)." },
+                    },
+                    required: ["selector"],
+                },
+            },
+            {
+                name: "long_press",
+                description: "Long press on an element.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        selector: { type: "string" },
+                        duration_ms: { type: "number", description: "Duration in ms (default 800)." },
+                    },
+                    required: ["selector"],
+                },
+            },
+            {
+                name: "double_tap",
+                description: "Double tap on an element.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        selector: { type: "string" },
+                    },
+                    required: ["selector"],
+                },
+            },
+            {
+                name: "get_logs",
+                description: "Get captured console logs from the app.",
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "get_errors",
+                description: "Get captured errors (framework and async) from the app.",
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "get_performance_metrics",
+                description: "Get frame timing metrics (build/raster times).",
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
         ],
     };
 });
@@ -178,6 +240,83 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                             text: `Current route: ${route}`,
                         },
                     ],
+                };
+            }
+
+            case "drag": {
+                const args = request.params.arguments as {
+                    selector: string;
+                    target_selector?: string;
+                    dx?: number;
+                    dy?: number;
+                    duration_ms?: number
+                };
+
+                let target: string | { x: number; y: number };
+                if (args.target_selector) {
+                    target = args.target_selector;
+                } else if (args.dx !== undefined && args.dy !== undefined) {
+                    target = { x: args.dx, y: args.dy };
+                } else {
+                    throw new McpError(ErrorCode.InvalidParams, "Either target_selector or dx/dy must be provided for drag");
+                }
+
+                const result = await fap.drag(args.selector, target, args.duration_ms);
+                return {
+                    content: [{ type: "text", text: `Dragged: ${JSON.stringify(result)}` }],
+                };
+            }
+
+            case "long_press": {
+                const { selector, duration_ms } = request.params.arguments as { selector: string; duration_ms?: number };
+                const result = await fap.longPress(selector, duration_ms);
+                return {
+                    content: [{ type: "text", text: `Long Pressed: ${JSON.stringify(result)}` }],
+                };
+            }
+
+            case "double_tap": {
+                const { selector } = request.params.arguments as { selector: string };
+                const result = await fap.doubleTap(selector);
+                return {
+                    content: [{ type: "text", text: `Double Tapped: ${JSON.stringify(result)}` }],
+                };
+            }
+
+            case "get_logs": {
+                const logs = await fap.getLogs();
+                return {
+                    content: [{ type: "text", text: JSON.stringify(logs, null, 2) }],
+                };
+            }
+
+            case "get_errors": {
+                const errors = await fap.getErrors();
+                return {
+                    content: [{ type: "text", text: JSON.stringify(errors, null, 2) }],
+                };
+            }
+
+            case "get_performance_metrics": {
+                const metrics = await fap.getPerformanceMetrics();
+                return {
+                    content: [{ type: "text", text: JSON.stringify(metrics, null, 2) }],
+                };
+            }
+
+            case "set_text": {
+                const { selector, text } = request.params.arguments as { selector: string; text: string };
+                await fap.setText(selector, text);
+                return {
+                    content: [{ type: "text", text: `Text set to: ${text}` }],
+                };
+            }
+
+            case "set_selection": {
+                const { selector, base, extent } = request.params.arguments as { selector: string; base: number; extent: number };
+                await fap.setSelection(selector, base, extent);
+                return {
+                    content: [{ type: "text", text: `Selection set: ${base}-${extent}` }],
                 };
             }
 

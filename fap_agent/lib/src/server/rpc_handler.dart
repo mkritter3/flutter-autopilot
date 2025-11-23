@@ -89,6 +89,39 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return {'status': 'text_entered', 'text': text};
     });
 
+    server.registerMethod('setText', (json_rpc.Parameters params) async {
+      final text = params['text'].asString;
+      final selectorString = params['selector'].asString;
+      
+      final elements = _indexer.find(Selector.parse(selectorString));
+      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+      
+      final element = elements.first;
+      if (!element.isInteractable) {
+        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+      }
+      
+      await _executor.enterText(element.node, text); // enterText uses SemanticsAction.setText which replaces text
+      return {'status': 'text_set', 'text': text};
+    });
+
+    server.registerMethod('setSelection', (json_rpc.Parameters params) async {
+      final selectorString = params['selector'].asString;
+      final base = params['base'].asInt;
+      final extent = params['extent'].asInt;
+
+      final elements = _indexer.find(Selector.parse(selectorString));
+      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+      
+      final element = elements.first;
+      if (!element.isInteractable) {
+        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+      }
+
+      await _executor.setSelection(element.node, base, extent);
+      return {'status': 'selection_set', 'base': base, 'extent': extent};
+    });
+
     server.registerMethod('getErrors', (json_rpc.Parameters params) {
       final frameworkErrors = _errorMonitor.getErrors().map((e) => e.toJson()).toList();
       final asyncErrors = agent.getErrors().map((e) => {'message': e, 'type': 'async'}).toList();

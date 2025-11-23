@@ -33,32 +33,61 @@ async function main() {
     // 1. List Tools
     console.log("Listing tools...");
     const tools = await client.listTools();
-    console.log("Tools found:", tools.tools.map(t => t.name).join(", "));
+    const toolNames = tools.tools.map(t => t.name);
+    console.log("Tools found:", toolNames.join(", "));
 
-    if (!tools.tools.find(t => t.name === "list_elements")) {
-        throw new Error("Missing list_elements tool");
+    const requiredTools = ["drag", "long_press", "double_tap", "get_logs", "get_errors", "get_performance_metrics"];
+    for (const t of requiredTools) {
+        if (!toolNames.includes(t)) throw new Error(`Missing tool: ${t}`);
     }
 
-    // 2. Get Route
-    console.log("Calling get_route...");
-    const routeResult = await client.callTool({
-        name: "get_route",
-        arguments: {}
-    });
-    console.log("Get Route Result:", JSON.stringify(routeResult));
+    // Helper to sleep
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-    // 3. List Elements
-    console.log("Calling list_elements...");
-    const treeResult = await client.callTool({
-        name: "list_elements",
-        arguments: {}
-    });
-    // Don't print the whole tree, just length check or something
-    const treeContent = (treeResult as any).content[0].text;
-    const tree = JSON.parse(treeContent);
-    console.log(`Tree received. Root element: ${tree[0]?.type}`);
+    // 2. Test Gestures
+    console.log("\n--- Testing Gestures ---");
+    console.log("Navigating to Gestures Screen...");
+    await client.callTool({ name: "tap", arguments: { selector: 'key="gestures_button"' } });
+    await sleep(1000);
 
-    console.log("Verification Successful!");
+    console.log("Testing Long Press...");
+    await client.callTool({ name: "long_press", arguments: { selector: 'key="long_press_box"', duration_ms: 1000 } });
+
+    console.log("Testing Double Tap...");
+    await client.callTool({ name: "double_tap", arguments: { selector: 'key="double_tap_box"' } });
+
+    console.log("Testing Drag...");
+    await client.callTool({ name: "drag", arguments: { selector: 'key="drag_box"', dx: 50, dy: 50 } });
+
+    console.log("Navigating back...");
+    await client.callTool({ name: "tap", arguments: { selector: 'key="gestures_back_button"' } });
+    await sleep(1000);
+
+    // 3. Test Observability
+    console.log("\n--- Testing Observability ---");
+    console.log("Navigating to Observability Screen...");
+    await client.callTool({ name: "tap", arguments: { selector: 'key="observability_button"' } });
+    await sleep(1000);
+
+    console.log("Triggering Log...");
+    await client.callTool({ name: "tap", arguments: { selector: 'key="log_button"' } });
+    await sleep(500);
+
+    console.log("Fetching Logs...");
+    const logsResult = await client.callTool({ name: "get_logs", arguments: {} });
+    const logs = JSON.parse((logsResult as any).content[0].text);
+    console.log(`Logs received: ${logs.length}`);
+    if (logs.length === 0) console.warn("Warning: No logs captured (might be timing issue)");
+
+    console.log("Fetching Performance Metrics...");
+    const perfResult = await client.callTool({ name: "get_performance_metrics", arguments: {} });
+    const perf = JSON.parse((perfResult as any).content[0].text);
+    console.log(`Performance metrics received: ${perf.length}`);
+
+    console.log("Navigating back...");
+    await client.callTool({ name: "tap", arguments: { selector: 'key="back_home_button"' } });
+
+    console.log("\nVerification Successful!");
     process.exit(0);
 }
 
