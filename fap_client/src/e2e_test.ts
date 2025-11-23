@@ -43,6 +43,21 @@ async function main() {
         // Wait for navigation
         await sleep(1000);
 
+        // Wait for Form Screen
+        console.log('Waiting for Form Screen...');
+        let formRetries = 0;
+        let formScreenTree = await client.getTree();
+        while (!formScreenTree.find(e => e.label === 'Enter Text') && formRetries < 20) {
+            await sleep(500);
+            formScreenTree = await client.getTree();
+            console.log('Waiting for Form Screen... Tree size:', formScreenTree.length);
+            // console.log('Tree labels:', formScreenTree.map(e => e.label).filter(l => l));
+            formRetries++;
+        }
+        if (!formScreenTree.find(e => e.label === 'Enter Text')) {
+            throw new Error('Form Screen failed to load');
+        }
+
         // 4. Enter Text
         console.log('Tapping text field...');
         await client.tap('label="Enter Text"');
@@ -149,7 +164,106 @@ async function main() {
         console.log('Item 10 visible:', !!item10);
         if (!item10) console.warn('Scroll might not have worked or Item 10 is not in view yet.');
 
-        // 8. Capture Screenshot
+        // 8. Observability
+        console.log('--- Observability Verification ---');
+        console.log('Navigating back to Home...');
+        // Use AppBar back button
+        await client.tap('key=gestures_back_button');
+        await sleep(1000);
+        await sleep(1000);
+
+        // Wait for Home Screen
+        console.log('Waiting for Home Screen...');
+        let homeRetries = 0;
+        let homeTree = await client.getTree();
+        while (!homeTree.find(e => e.key === 'gestures_button') && homeRetries < 20) {
+            await sleep(500);
+            homeTree = await client.getTree();
+            console.log('Waiting for Home Screen... Tree size:', homeTree.length);
+            // console.log('Tree keys:', homeTree.map(e => e.key).filter(k => k));
+            homeRetries++;
+        }
+        if (!homeTree.find(e => e.key === 'gestures_button')) {
+            throw new Error('Home Screen failed to load');
+        }
+
+        console.log('Navigating to Observability Screen...');
+        await client.tap('key=observability_button');
+        await sleep(1000);
+
+        // 8a. Logs
+        console.log('Testing Log Capture...');
+        await client.tap('key=log_button');
+        await sleep(500);
+        const logs = await client.getLogs();
+        console.log('Captured Logs:', logs.length);
+        const foundLog = logs.some(l => l.includes('Test Log Message'));
+        if (!foundLog) throw new Error('Failed to capture log message');
+        console.log('Log capture verified!');
+
+        // 8b. Performance Metrics
+        console.log('Testing Performance Metrics...');
+        await client.tap('key=jank_button'); // Trigger some work
+        await sleep(500);
+        const metrics = await client.getPerformanceMetrics();
+        console.log('Captured Metrics:', metrics.length);
+        if (metrics.length === 0) throw new Error('No performance metrics captured');
+        console.log('Last frame build time:', metrics[metrics.length - 1].build, 'us');
+        console.log('Performance metrics verified!');
+
+        // 8c. Async Errors
+        console.log('Testing Async Error Capture...');
+        await client.tap('key=error_button');
+        await sleep(500);
+        const errors = await client.getErrors();
+        console.log('Captured Errors:', errors);
+        const foundError = errors.some(e =>
+            (typeof e === 'string' && e.includes('Test Async Error')) ||
+            (e.message && e.message.includes('Test Async Error'))
+        );
+        if (!foundError) throw new Error('Failed to capture async error');
+        console.log('Async error capture verified!');
+
+        console.log('Navigating back to Home...');
+        await client.tap('key=back_home_button');
+        await sleep(1000);
+
+        // 9. Advanced Selectors Verification
+        console.log('--- Advanced Selectors Verification ---');
+        console.log('Navigating to Advanced Selectors Screen...');
+        await client.tap('key=advanced_button');
+        await sleep(1000);
+
+        // 9a. Metadata Selector
+        console.log('Testing Metadata Selector...');
+        await client.tap('test-id="meta-btn"');
+        // We just tap it to verify it's found. If not found, tap throws.
+        console.log('Metadata selector verified!');
+
+        // 9b. Regex Selector
+        console.log('Testing Regex Selector...');
+        const regexTree = await client.getTree();
+        const dynamicText = regexTree.find(e => e.label && e.label.startsWith('Dynamic ID'));
+        if (!dynamicText) throw new Error('Dynamic text not found in tree');
+
+        // Try finding it via selector using regex syntax: key=~/pattern/
+        // The parser handles text=~/^Dynamic ID: \d+-ABC$/
+        const findResult: any = await client.tap('text=~/^Dynamic ID: \\d+-ABC$/');
+        if (findResult.status !== 'tapped') throw new Error('Failed to match regex selector');
+        console.log('Regex selector verified!');
+
+        // 9c. Combinators
+        console.log('Testing Combinators...');
+
+        // Descendant
+        await client.tap('key="parent_container" text="Direct Child"');
+        console.log('Descendant combinator verified!');
+
+        console.log('Navigating back to Home...');
+        await client.tap('key=back_home_button');
+        await sleep(1000);
+
+        // 10. Screenshot
         console.log('Capturing screenshot...');
         const screenshot = await client.captureScreenshot();
         const screenshotPath = path.resolve('e2e_screenshot.png');
@@ -157,11 +271,12 @@ async function main() {
         console.log(`Screenshot captured (${screenshot.length} bytes)`);
         console.log(`Saved to: ${screenshotPath}`);
 
-        await client.disconnect();
-
+        console.log('E2E Test Passed!');
     } catch (e) {
         console.error('E2E Test Failed:', e);
         process.exit(1);
+    } finally {
+        await client.disconnect();
     }
 }
 

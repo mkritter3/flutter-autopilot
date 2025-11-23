@@ -26,6 +26,8 @@ class MyApp extends StatelessWidget {
         '/list': (context) => const ListScreen(),
         '/form': (context) => const FormScreen(),
         '/gestures': (context) => const GesturesScreen(),
+        '/observability': (context) => const ObservabilityScreen(),
+        '/advanced': (context) => const AdvancedSelectorsScreen(),
       },
     );
   }
@@ -64,6 +66,18 @@ class HomeScreen extends StatelessWidget {
               key: const Key('gestures_button'),
               onPressed: () => Navigator.pushNamed(context, '/gestures'),
               child: const Text('Go to Gestures'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              key: const Key('observability_button'),
+              onPressed: () => Navigator.pushNamed(context, '/observability'),
+              child: const Text('Go to Observability'),
+            ),
+            const SizedBox(height: 10),
+            ElevatedButton(
+              key: const Key('advanced_button'),
+              onPressed: () => Navigator.pushNamed(context, '/advanced'),
+              child: const Text('Go to Advanced Selectors'),
             ),
             const SizedBox(height: 20),
             Semantics(
@@ -189,9 +203,20 @@ class _GesturesScreenState extends State<GesturesScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gestures')),
-      body: SingleChildScrollView(
-        child: Column(
+      appBar: AppBar(
+        title: const Text('Gestures'),
+        leading: IconButton(
+          key: const Key('gestures_back_button'),
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Semantics(
+        key: const Key('gestures_scroll_view'),
+        label: 'Gestures Scroll View',
+        explicitChildNodes: true,
+        child: SingleChildScrollView(
+          child: Column(
           children: [
             const SizedBox(height: 20),
             Text('Status: $_status', key: const Key('gesture_status')),
@@ -266,6 +291,127 @@ class _GesturesScreenState extends State<GesturesScreen> {
                   ),
                 ),
               ),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              key: const Key('back_home_button'),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Back to Home'),
+            ),
+          ],
+        ),
+      ),
+      ),
+    );
+  }
+}
+
+class ObservabilityScreen extends StatelessWidget {
+  const ObservabilityScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Observability')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(
+              key: const Key('log_button'),
+              onPressed: () {
+                debugPrint('Test Log Message ${DateTime.now()}');
+              },
+              child: const Text('Log Message'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              key: const Key('error_button'),
+              onPressed: () {
+                // Async error
+                Future.delayed(const Duration(milliseconds: 100), () {
+                  throw Exception('Test Async Error');
+                });
+              },
+              child: const Text('Trigger Async Error'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              key: const Key('jank_button'),
+              onPressed: () {
+                // Simulate jank (block UI thread)
+                final end = DateTime.now().add(const Duration(milliseconds: 200));
+                while (DateTime.now().isBefore(end)) {
+                  // Busy wait
+                }
+              },
+              child: const Text('Trigger Jank'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              key: const Key('back_home_button'),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Back to Home'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AdvancedSelectorsScreen extends StatelessWidget {
+  const AdvancedSelectorsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Advanced Selectors')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // 1. FapMeta Tagging
+            FapMeta(
+              metadata: {'test-id': 'meta-btn', 'custom-tag': 'priority'},
+              child: ElevatedButton(
+                onPressed: () {},
+                child: const Text('Meta Button'),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // 2. Nested Structure for Combinators
+            Semantics(
+              key: const Key('parent_container'),
+              explicitChildNodes: true,
+              container: true,
+              label: 'Parent Container',
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(border: Border.all(color: Colors.blue)),
+                child: Column(
+                  children: [
+                    const Text('Direct Child'),
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(border: Border.all(color: Colors.red)),
+                      child: const Text('Descendant Child'),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // 3. Regex Target
+            const Text('Dynamic ID: 12345-ABC'),
+            
+            const SizedBox(height: 20),
+            ElevatedButton(
+              key: const Key('back_home_button'),
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Back to Home'),
             ),
           ],
         ),

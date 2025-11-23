@@ -1,5 +1,6 @@
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
+import '../widgets/fap_meta.dart';
 import 'selector_parser.dart';
 
 class FapElement {
@@ -8,6 +9,7 @@ class FapElement {
   final Rect globalRect;
   String? type;
   String? key;
+  Map<String, String> metadata = {};
 
   FapElement({
     required this.id,
@@ -15,7 +17,8 @@ class FapElement {
     required this.globalRect,
     this.type,
     this.key,
-  });
+    Map<String, String>? metadata,
+  }) : metadata = metadata ?? {};
 
   Map<String, dynamic> toJson() {
     return {
@@ -25,6 +28,7 @@ class FapElement {
       'label': node.label,
       'value': node.value,
       'hint': node.hint,
+      'metadata': metadata,
       'rect': {
         'x': globalRect.left,
         'y': globalRect.top,
@@ -52,8 +56,11 @@ class SemanticsIndexer {
 
   Map<String, FapElement> get elements => _elements;
 
+  final Map<int, FapElement> _nodeIdToElement = {};
+
   void reindex() {
     _elements.clear();
+    _nodeIdToElement.clear();
     _nextId = 1;
     
     // 1. Index Semantics
@@ -87,11 +94,13 @@ class SemanticsIndexer {
       final globalRect = MatrixUtils.transformRect(nodeGlobalTransform, node.rect);
       final id = 'fap-${_nextId++}';
       
-      _elements[id] = FapElement(
+      final element = FapElement(
         id: id,
         node: node,
         globalRect: globalRect,
       );
+      _elements[id] = element;
+      _nodeIdToElement[node.id] = element;
     }
 
     node.visitChildren((child) {
@@ -99,6 +108,23 @@ class SemanticsIndexer {
       return true;
     });
   }
+
+  // ... _enrichElements and _traverseElements remain same ...
+  // But I need to make sure I don't delete them.
+  // Since I am replacing from line 55 (reindex) to end, I need to include them.
+  // Wait, I should use replace_file_content carefully.
+  // I will replace `reindex` and `_traverse` first to add `_nodeIdToElement`.
+  // Then replace `find`.
+
+  // Let's do it in chunks if possible, or just replace the whole class content if it's easier.
+  // The file is small enough.
+
+  // Actually, I'll just replace `reindex` and `_traverse` first.
+  // And then `find`.
+
+  // Wait, `_enrichElements` uses `_elements`.
+  // I'll replace `reindex` and `_traverse` first.
+
 
   void _enrichElements() {
     final rootElement = WidgetsBinding.instance.rootElement;
@@ -141,6 +167,11 @@ class SemanticsIndexer {
   }
 
   void _extractInfo(Element element, FapElement fapElement) {
+    // Extract Metadata
+    if (element.widget is FapMeta) {
+      fapElement.metadata.addAll((element.widget as FapMeta).metadata);
+    }
+
     // Extract Key
     if (fapElement.key == null && element.widget.key != null) {
       final key = element.widget.key!;
@@ -167,8 +198,52 @@ class SemanticsIndexer {
 
   List<FapElement> find(Selector selector) {
     reindex(); 
+    var candidates = _elements.values.toList();
+    return _findRecursive(candidates, selector);
+  }
+
+  List<FapElement> _findRecursive(List<FapElement> scope, Selector selector) {
+    // 1. Filter scope by current selector criteria
+    var matches = scope.where((e) => _matches(e, selector)).toList();
+
+    if (selector.next == null) {
+      return matches;
+    }
+
+    // 2. If there is a next selector, proceed based on combinator
+    var nextScope = <FapElement>[];
     
-    return _elements.values.where((element) {
+    for (var match in matches) {
+      if (selector.combinator == SelectorCombinator.child) {
+        // Direct children
+        match.node.visitChildren((child) {
+           final childElement = _nodeIdToElement[child.id];
+           if (childElement != null) {
+             nextScope.add(childElement);
+           }
+           return true;
+        });
+      } else if (selector.combinator == SelectorCombinator.descendant) {
+        // All descendants
+        _collectDescendants(match.node, nextScope);
+      }
+    }
+    
+    return _findRecursive(nextScope, selector.next!);
+  }
+
+  void _collectDescendants(SemanticsNode node, List<FapElement> result) {
+    node.visitChildren((child) {
+      final childElement = _nodeIdToElement[child.id];
+      if (childElement != null) {
+        result.add(childElement);
+      }
+      _collectDescendants(child, result);
+      return true;
+    });
+  }
+
+  bool _matches(FapElement element, Selector selector) {
       final data = element.node.getSemanticsData();
       
       // Match ID
@@ -196,10 +271,47 @@ class SemanticsIndexer {
 
       // Match Attributes
       for (final entry in selector.attributes.entries) {
+        // Check metadata first
+        if (element.metadata.containsKey(entry.key)) {
+            if (element.metadata[entry.key] != entry.value) return false;
+            continue;
+        }
+        // Fallback to semantics data
         if (data.label != entry.value && data.value != entry.value && data.hint != entry.value) return false;
+      }
+
+      // Match Regex Attributes
+      for (final entry in selector.regexAttributes.entries) {
+        final pattern = entry.value;
+        bool matched = false;
+        
+        // Check metadata
+        if (element.metadata.containsKey(entry.key)) {
+            if (pattern.hasMatch(element.metadata[entry.key]!)) matched = true;
+        }
+        
+        // Check standard fields
+        if (!matched) {
+             if (entry.key == 'text' || entry.key == 'label') {
+                 if (pattern.hasMatch(data.label)) matched = true;
+             }
+             if (entry.key == 'text' || entry.key == 'value') {
+                 if (pattern.hasMatch(data.value)) matched = true;
+             }
+             if (entry.key == 'text' || entry.key == 'hint') {
+                 if (pattern.hasMatch(data.hint)) matched = true;
+             }
+             if (entry.key == 'key' && element.key != null) {
+                 if (pattern.hasMatch(element.key!)) matched = true;
+             }
+             if (entry.key == 'type' && element.type != null) {
+                 if (pattern.hasMatch(element.type!)) matched = true;
+             }
+        }
+        
+        if (!matched) return false;
       }
       
       return true;
-    }).toList();
   }
 }
