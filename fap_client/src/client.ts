@@ -67,6 +67,10 @@ export class FapClient {
         this.ws = null;
     }
 
+    get isConnected(): boolean {
+        return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+    }
+
     private async request<T>(method: string, params: any = {}): Promise<T> {
         if (!this.ws) throw new Error('Not connected');
 
