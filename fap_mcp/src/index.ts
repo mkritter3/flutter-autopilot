@@ -168,6 +168,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     properties: {},
                 },
             },
+            {
+                name: "set_text",
+                description: "Set the text of a text field directly (replaces existing text).",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        selector: { type: "string" },
+                        text: { type: "string" },
+                    },
+                    required: ["selector", "text"],
+                },
+            },
+            {
+                name: "set_selection",
+                description: "Set the selection range (cursor position) of a text field.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        selector: { type: "string" },
+                        base: { type: "number", description: "Start offset of selection." },
+                        extent: { type: "number", description: "End offset of selection." },
+                    },
+                    required: ["selector", "base", "extent"],
+                },
+            },
         ],
     };
 });
