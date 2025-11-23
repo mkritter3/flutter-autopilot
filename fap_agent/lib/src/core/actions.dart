@@ -142,14 +142,14 @@ class ActionExecutor {
   }
 
   Future<void> enterText(SemanticsNode node, String text) async {
-    print('ActionExecutor: enterText "$text" on node ${node.id}');
+    debugPrint('ActionExecutor: enterText "$text" on node ${node.id}');
     if (node.owner != null) {
       node.owner!.performAction(node.id, SemanticsAction.setText, text);
     }
   }
 
   Future<void> setSelection(SemanticsNode node, int base, int extent) async {
-    print('ActionExecutor: setSelection ($base, $extent) on node ${node.id}');
+    debugPrint('ActionExecutor: setSelection ($base, $extent) on node ${node.id}');
     if (node.owner != null) {
       node.owner!.performAction(node.id, SemanticsAction.setSelection, TextSelection(baseOffset: base, extentOffset: extent));
     }
