@@ -9,17 +9,20 @@ import '../core/semantics_index.dart';
 import '../utils/errors.dart';
 import '../utils/screenshot.dart';
 
+import '../../fap_agent.dart';
+
 abstract class FapRpcHandler {
   void registerMethods(json_rpc.Server server);
 }
 
 class FapRpcHandlerImpl implements FapRpcHandler {
+  final FapAgent agent;
   final SemanticsIndexer _indexer = SemanticsIndexer();
   final ActionExecutor _executor = ActionExecutor();
   final ErrorMonitor _errorMonitor = ErrorMonitor();
   final ScreenshotUtils _screenshotUtils = ScreenshotUtils();
 
-  FapRpcHandlerImpl() {
+  FapRpcHandlerImpl({required this.agent}) {
     _errorMonitor.start();
   }
 
@@ -80,7 +83,17 @@ class FapRpcHandlerImpl implements FapRpcHandler {
     });
 
     server.registerMethod('getErrors', (json_rpc.Parameters params) {
-      return _errorMonitor.getErrors().map((e) => e.toJson()).toList();
+      final frameworkErrors = _errorMonitor.getErrors().map((e) => e.toJson()).toList();
+      final asyncErrors = agent.getErrors().map((e) => {'message': e, 'type': 'async'}).toList();
+      return [...frameworkErrors, ...asyncErrors];
+    });
+
+    server.registerMethod('getPerformanceMetrics', (json_rpc.Parameters params) {
+      return agent.getPerformanceMetrics();
+    });
+
+    server.registerMethod('getLogs', (json_rpc.Parameters params) {
+      return agent.getLogs();
     });
 
     server.registerMethod('captureScreenshot', (json_rpc.Parameters params) async {
