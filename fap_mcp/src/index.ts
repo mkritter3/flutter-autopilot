@@ -8,14 +8,207 @@ import {
     ErrorCode,
     McpError,
 } from "@modelcontextprotocol/sdk/types.js";
-import { z } from "zod";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { spawnSync } from "node:child_process";
 import { FapClient } from "fap-client";
+
+interface ConfigFile {
+    agentUrl?: string;
+    agentHost?: string;
+    agentPort?: number;
+    agentSecure?: boolean;
+    secretToken?: string;
+    adbReverse?: boolean;
+}
+
+interface LoadedConfig {
+    path: string;
+    data: ConfigFile;
+}
+
+interface AgentResolution {
+    url: string;
+    reason: string;
+    secretToken?: string;
+}
+
+function resolveAgentEndpoint(): AgentResolution {
+    const envUrl = process.env.FAP_AGENT_URL?.trim();
+    if (envUrl) {
+        return { url: envUrl, reason: "env:FAP_AGENT_URL" };
+    }
+
+    const envHost = process.env.FAP_AGENT_HOST?.trim();
+    const envPort = parsePort(process.env.FAP_AGENT_PORT);
+    const envSecure = parseBoolean(process.env.FAP_AGENT_SECURE);
+    if (envHost) {
+        return {
+            url: formatUrl(envHost, envPort ?? 9001, envSecure),
+            reason: "env:FAP_AGENT_HOST/PORT",
+        };
+    }
+
+    const config = loadConfigFile();
+    if (config) {
+        const { data } = config;
+        if (typeof data.agentUrl === "string" && data.agentUrl.trim().length > 0) {
+            return {
+                url: data.agentUrl,
+                reason: `config:${config.path}`,
+                secretToken: data.secretToken,
+            };
+        }
+        if (data.agentHost) {
+            const port = data.agentPort ?? envPort ?? 9001;
+            return {
+                url: formatUrl(data.agentHost, port, data.agentSecure),
+                reason: `config:${config.path}`,
+                secretToken: data.secretToken,
+            };
+        }
+    }
+
+    const port = envPort ?? config?.data.agentPort ?? 9001;
+    if (shouldAttemptAdbReverse(config?.data) && tryAdbReverse(port)) {
+        return {
+            url: formatUrl("127.0.0.1", port, false),
+            reason: "adb reverse (auto)",
+            secretToken: config?.data.secretToken,
+        };
+    }
+
+    const fallback = determineFallbackHost();
+    return {
+        url: formatUrl(fallback.host, port, false),
+        reason: fallback.reason,
+        secretToken: config?.data.secretToken,
+    };
+}
+
+function loadConfigFile(): LoadedConfig | null {
+    const specific = process.env.FAP_MCP_CONFIG?.trim();
+    const candidates = [
+        specific,
+        path.join(process.cwd(), "fap_mcp.config.json"),
+        path.join(process.cwd(), ".fap_mcp.json"),
+        path.join(os.homedir(), ".fap_mcp.json"),
+    ].filter((p): p is string => Boolean(p));
+
+    for (const candidate of candidates) {
+        try {
+            const resolved = path.resolve(candidate);
+            if (!fs.existsSync(resolved)) {
+                continue;
+            }
+            const raw = fs.readFileSync(resolved, "utf-8");
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === "object") {
+                const normalized: ConfigFile = {
+                    agentUrl: typeof (parsed as any).agentUrl === "string" ? (parsed as any).agentUrl : undefined,
+                    agentHost: typeof (parsed as any).agentHost === "string" ? (parsed as any).agentHost : undefined,
+                    agentPort: parsePort((parsed as any).agentPort),
+                    agentSecure: parseBoolean((parsed as any).agentSecure),
+                    secretToken: typeof (parsed as any).secretToken === "string" ? (parsed as any).secretToken : undefined,
+                    adbReverse: typeof (parsed as any).adbReverse === "boolean" ? (parsed as any).adbReverse : undefined,
+                };
+                return { path: resolved, data: normalized };
+            }
+        } catch (error) {
+            console.error(`FAP MCP: Failed to load config file ${candidate}:`, error);
+        }
+    }
+    return null;
+}
+
+function parsePort(value?: string | number | null): number | undefined {
+    if (value === undefined || value === null) {
+        return undefined;
+    }
+    if (typeof value === "number") {
+        return Number.isFinite(value) ? value : undefined;
+    }
+    const num = Number(value);
+    if (!Number.isNaN(num) && num > 0) {
+        return num;
+    }
+    return undefined;
+}
+
+function parseBoolean(value?: string | boolean | null): boolean | undefined {
+    if (value === undefined || value === null) {
+        return undefined;
+    }
+    if (typeof value === "boolean") {
+        return value;
+    }
+    const normalized = value.trim().toLowerCase();
+    if (normalized === "true") return true;
+    if (normalized === "false") return false;
+    return undefined;
+}
+
+function formatUrl(host: string, port: number, secure?: boolean): string {
+    const protocol = secure ? "wss" : "ws";
+    const needsBrackets = host.includes(":") && !host.startsWith("[");
+    const hostPart = needsBrackets ? `[${host}]` : host;
+    return `${protocol}://${hostPart}:${port}`;
+}
+
+function shouldAttemptAdbReverse(config?: ConfigFile): boolean {
+    const skipEnv = process.env.FAP_SKIP_ADB_REVERSE?.toLowerCase();
+    if (skipEnv === "true") {
+        return false;
+    }
+    if (skipEnv === "false") {
+        return true;
+    }
+    if (config?.adbReverse === false) {
+        return false;
+    }
+    return true;
+}
+
+function tryAdbReverse(port: number): boolean {
+    try {
+        const result = spawnSync("adb", ["reverse", `tcp:${port}`, `tcp:${port}`], { stdio: "ignore" });
+        return result.status === 0;
+    } catch {
+        return false;
+    }
+}
+
+function determineFallbackHost(): { host: string; reason: string } {
+    const dockerHost = process.env.FAP_DOCKER_HOST?.trim();
+    if (dockerHost) {
+        return { host: dockerHost, reason: "env:FAP_DOCKER_HOST" };
+    }
+
+    if (fs.existsSync("/.dockerenv")) {
+        return { host: "host.docker.internal", reason: "docker default host" };
+    }
+
+    return { host: "127.0.0.1", reason: "default localhost" };
+}
+
+const agentResolution = resolveAgentEndpoint();
+const agentUrl = agentResolution.url;
+const timeoutEnv = process.env.FAP_AGENT_TIMEOUT_MS;
+const timeoutMs = timeoutEnv !== undefined ? Number(timeoutEnv) : undefined;
+const normalizedTimeout = timeoutMs !== undefined && !Number.isNaN(timeoutMs) ? timeoutMs : undefined;
+
+if (timeoutEnv !== undefined && normalizedTimeout === undefined) {
+    console.error(`Invalid FAP_AGENT_TIMEOUT_MS="${timeoutEnv}". Falling back to default timeout.`);
+}
 
 // Initialize FAP Client
 const fap = new FapClient({
-    url: 'ws://127.0.0.1:9001',
-    secretToken: process.env.FAP_SECRET_TOKEN // Optional token
+    url: agentUrl,
+    secretToken: process.env.FAP_SECRET_TOKEN ?? agentResolution.secretToken,
+    timeoutMs: normalizedTimeout,
 });
+console.error(`FAP MCP: targeting agent at ${agentUrl} (${agentResolution.reason})`);
 
 // Initialize MCP Server
 const server = new Server(
@@ -290,8 +483,13 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
 
             case "scroll": {
-                const { selector, dx, dy } = request.params.arguments as { selector: string; dx: number; dy: number };
-                const result = await fap.scroll(selector, dx, dy);
+                const { selector, dx, dy, durationMs } = request.params.arguments as {
+                    selector: string;
+                    dx: number;
+                    dy: number;
+                    durationMs?: number;
+                };
+                const result = await fap.scroll(selector, dx, dy, durationMs);
                 return {
                     content: [
                         {

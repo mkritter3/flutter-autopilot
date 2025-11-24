@@ -29,7 +29,8 @@ class FapRpcHandlerImpl implements FapRpcHandler {
     required this.agent,
     required SemanticsIndexer indexer,
     required Recorder recorder,
-  }) : _indexer = indexer, _recorder = recorder {
+  }) : _indexer = indexer,
+       _recorder = recorder {
     _errorMonitor.start();
   }
 
@@ -46,7 +47,7 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       _recorder.stop();
       return {'status': 'recording_stopped'};
     });
-    
+
     peer.registerMethod('getTree', ([json_rpc.Parameters? params]) {
       _indexer.reindex();
       final data = _indexer.elements.values.map((e) => e.toJson()).toList();
@@ -63,34 +64,39 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return agent.navigatorObserver.currentRoute;
     });
 
-
     peer.registerMethod('tap', (json_rpc.Parameters params) async {
       final selectorString = params['selector'].asString;
       final selector = Selector.parse(selectorString);
-      
+
       final elements = _indexer.find(selector);
       if (elements.isEmpty) {
         throw json_rpc.RpcException(100, 'Element not found: $selectorString');
       }
-      
+
       final element = elements.first;
       if (!element.isInteractable) {
-        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+        throw json_rpc.RpcException(
+          102,
+          'Element is not interactable: $selectorString',
+        );
       }
 
-      final debugInfo = await _executor.tap(element.globalRect);
-      
+      final debugInfo = await _executor.tap(
+        element.globalRect,
+        semanticsNode: element.node,
+      );
+
       return {
-        'status': 'tapped', 
+        'status': 'tapped',
         'element': element.toJson(),
-        'debug': debugInfo
+        'debug': debugInfo,
       };
     });
 
     peer.registerMethod('tapAt', (json_rpc.Parameters params) async {
       final x = params['x'].asNum.toDouble();
       final y = params['y'].asNum.toDouble();
-      
+
       return await _executor.tapAt(Offset(x, y));
     });
 
@@ -102,38 +108,51 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       } catch (_) {
         // selector is optional
       }
-      
+
       if (selectorString != null) {
         final selector = Selector.parse(selectorString);
         final elements = _indexer.find(selector);
         if (elements.isEmpty) {
-          throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+          throw json_rpc.RpcException(
+            100,
+            'Element not found: $selectorString',
+          );
         }
         final element = elements.first;
         if (!element.isInteractable) {
-          throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+          throw json_rpc.RpcException(
+            102,
+            'Element is not interactable: $selectorString',
+          );
         }
         await _executor.enterText(element.node, text);
       } else {
         throw json_rpc.RpcException(100, 'Selector required for enterText');
       }
-      
+
       return {'status': 'text_entered', 'text': text};
     });
 
     peer.registerMethod('setText', (json_rpc.Parameters params) async {
       final text = params['text'].asString;
       final selectorString = params['selector'].asString;
-      
+
       final elements = _indexer.find(Selector.parse(selectorString));
-      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
-      
+      if (elements.isEmpty)
+        throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+
       final element = elements.first;
       if (!element.isInteractable) {
-        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+        throw json_rpc.RpcException(
+          102,
+          'Element is not interactable: $selectorString',
+        );
       }
-      
-      await _executor.enterText(element.node, text); // enterText uses SemanticsAction.setText which replaces text
+
+      await _executor.enterText(
+        element.node,
+        text,
+      ); // enterText uses SemanticsAction.setText which replaces text
       return {'status': 'text_set', 'text': text};
     });
 
@@ -143,11 +162,15 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       final extent = params['extent'].asInt;
 
       final elements = _indexer.find(Selector.parse(selectorString));
-      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
-      
+      if (elements.isEmpty)
+        throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+
       final element = elements.first;
       if (!element.isInteractable) {
-        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+        throw json_rpc.RpcException(
+          102,
+          'Element is not interactable: $selectorString',
+        );
       }
 
       await _executor.setSelection(element.node, base, extent);
@@ -155,8 +178,14 @@ class FapRpcHandlerImpl implements FapRpcHandler {
     });
 
     peer.registerMethod('getErrors', (json_rpc.Parameters params) {
-      final frameworkErrors = _errorMonitor.getErrors().map((e) => e.toJson()).toList();
-      final asyncErrors = agent.getErrors().map((e) => {'message': e, 'type': 'async'}).toList();
+      final frameworkErrors = _errorMonitor
+          .getErrors()
+          .map((e) => e.toJson())
+          .toList();
+      final asyncErrors = agent
+          .getErrors()
+          .map((e) => {'message': e, 'type': 'async'})
+          .toList();
       return [...frameworkErrors, ...asyncErrors];
     });
 
@@ -168,7 +197,9 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return agent.getLogs();
     });
 
-    peer.registerMethod('captureScreenshot', (json_rpc.Parameters params) async {
+    peer.registerMethod('captureScreenshot', (
+      json_rpc.Parameters params,
+    ) async {
       final bytes = await _screenshotUtils.capture();
       if (bytes == null) {
         throw json_rpc.RpcException(101, 'Screenshot failed');
@@ -183,14 +214,23 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       final durationMs = params['durationMs'].asIntOr(300);
 
       final elements = _indexer.find(Selector.parse(selectorString));
-      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
-      
+      if (elements.isEmpty)
+        throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+
       final element = elements.first;
       if (!element.isInteractable) {
-        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+        throw json_rpc.RpcException(
+          102,
+          'Element is not interactable: $selectorString',
+        );
       }
 
-      return await _executor.scroll(element.globalRect, dx, dy, duration: Duration(milliseconds: durationMs));
+      return await _executor.scroll(
+        element.globalRect,
+        dx,
+        dy,
+        duration: Duration(milliseconds: durationMs),
+      );
     });
 
     peer.registerMethod('drag', (json_rpc.Parameters params) async {
@@ -201,30 +241,45 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       final durationMs = params['durationMs'].asIntOr(300);
 
       final elements = _indexer.find(Selector.parse(selectorString));
-      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
-      
+      if (elements.isEmpty)
+        throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+
       final element = elements.first;
       if (!element.isInteractable) {
-        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+        throw json_rpc.RpcException(
+          102,
+          'Element is not interactable: $selectorString',
+        );
       }
-      
+
       final start = element.globalRect.center;
 
       Offset end;
       if (targetSelectorString.isNotEmpty) {
         final targets = _indexer.find(Selector.parse(targetSelectorString));
-        if (targets.isEmpty) throw json_rpc.RpcException(100, 'Target element not found: $targetSelectorString');
-        
+        if (targets.isEmpty)
+          throw json_rpc.RpcException(
+            100,
+            'Target element not found: $targetSelectorString',
+          );
+
         final target = targets.first;
         if (!target.isInteractable) {
-          throw json_rpc.RpcException(102, 'Target element is not interactable: $targetSelectorString');
+          throw json_rpc.RpcException(
+            102,
+            'Target element is not interactable: $targetSelectorString',
+          );
         }
         end = target.globalRect.center;
       } else {
         end = start.translate(dx, dy);
       }
 
-      return await _executor.drag(start, end, duration: Duration(milliseconds: durationMs));
+      return await _executor.drag(
+        start,
+        end,
+        duration: Duration(milliseconds: durationMs),
+      );
     });
 
     peer.registerMethod('longPress', (json_rpc.Parameters params) async {
@@ -232,45 +287,56 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       final durationMs = params['durationMs'].asIntOr(800);
 
       final elements = _indexer.find(Selector.parse(selectorString));
-      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
-      
+      if (elements.isEmpty)
+        throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+
       final element = elements.first;
       if (!element.isInteractable) {
-        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+        throw json_rpc.RpcException(
+          102,
+          'Element is not interactable: $selectorString',
+        );
       }
-      
-      return await _executor.longPress(element.globalRect, duration: Duration(milliseconds: durationMs));
+
+      return await _executor.longPress(
+        element.globalRect,
+        duration: Duration(milliseconds: durationMs),
+      );
     });
 
     peer.registerMethod('doubleTap', (json_rpc.Parameters params) async {
       final selectorString = params['selector'].asString;
 
       final elements = _indexer.find(Selector.parse(selectorString));
-      if (elements.isEmpty) throw json_rpc.RpcException(100, 'Element not found: $selectorString');
-      
+      if (elements.isEmpty)
+        throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+
       final element = elements.first;
       if (!element.isInteractable) {
-        throw json_rpc.RpcException(102, 'Element is not interactable: $selectorString');
+        throw json_rpc.RpcException(
+          102,
+          'Element is not interactable: $selectorString',
+        );
       }
-      
-      return await _executor.doubleTap(element.globalRect);
+
+      return await _executor.doubleTap(
+        element.globalRect,
+        semanticsNode: element.node,
+      );
     });
   }
 
   dynamic _compressIfNeeded(Object data) {
     final jsonString = jsonEncode(data);
     final bytes = utf8.encode(jsonString);
-    
+
     // Compress if larger than 1KB
     if (bytes.length > 1024) {
       final compressed = GZipCodec().encode(bytes);
       final base64 = base64Encode(compressed);
-      return {
-        'compressed': true,
-        'data': base64,
-      };
+      return {'compressed': true, 'data': base64};
     }
-    
+
     return data;
   }
 }

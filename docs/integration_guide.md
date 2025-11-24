@@ -31,6 +31,18 @@ void main() {
 }
 ```
 
+### Allow Remote Connections (optional)
+
+By default the agent only listens on `127.0.0.1`. Set `bindAddress` to `InternetAddress.anyIPv4`/`anyIPv6` (remove `const` from the example above) or export `FAP_BIND_ADDRESS` (e.g., `FAP_BIND_ADDRESS=0.0.0.0`) to reach the app from an emulator, physical device, or another machine.
+
+```dart
+import 'dart:io';
+
+FapAgent.init(FapConfig(
+  bindAddress: InternetAddress.anyIPv4,
+));
+```
+
 ## 3. Enable Semantics
 
 FAP relies on Flutter's Semantics tree. Ensure it is enabled in your `build` method or `main`.

@@ -14,7 +14,7 @@ dependencies:
 
 ## Usage
 
-Initialize the agent in your `main()` function:
+Initialize the agent in your `main()` function (import `dart:io` if you want to customize the bind address):
 
 ```dart
 import 'package:fap_agent/fap_agent.dart';
@@ -31,10 +31,21 @@ void main() {
 
 ## Configuration
 
+To listen on all interfaces (emulators/devices), drop the `const` and pass a runtime `InternetAddress`:
+
+```dart
+import 'dart:io';
+
+FapAgent.init(FapConfig(
+  bindAddress: InternetAddress.anyIPv4,
+));
+```
+
 `FapConfig` options:
 - `port`: The WebSocket port (default 9001).
 - `enabled`: Whether the agent is active (default: `!kReleaseMode`).
 - `secretToken`: Optional bearer token for authentication.
+- `bindAddress`: The interface to bind the WebSocket server to (default `loopback`). Provide an `InternetAddress` or use `FAP_BIND_ADDRESS` (e.g., `FAP_BIND_ADDRESS=0.0.0.0`).
 - `maxFrameTimings`: Buffer size for frame timing metrics.
 - `maxLogs`: Buffer size for console logs.
 - `maxErrors`: Buffer size for error tracking.

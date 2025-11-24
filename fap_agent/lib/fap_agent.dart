@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:collection';
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
@@ -20,6 +21,7 @@ class FapConfig {
   final int port;
   final bool enabled;
   final String? secretToken;
+  final InternetAddress? bindAddress;
 
   final int maxFrameTimings;
   final int maxLogs;
@@ -29,13 +31,12 @@ class FapConfig {
     this.port = 9001,
     this.enabled = !kReleaseMode,
     this.secretToken,
+    this.bindAddress,
     this.maxFrameTimings = 100,
     this.maxLogs = 1000,
     this.maxErrors = 100,
   });
 }
-
-
 
 class FapAgent {
   static FapAgent? _instance;
@@ -43,7 +44,7 @@ class FapAgent {
   FapServer? _server;
   SemanticsHandle? _semanticsHandle;
   final FapNavigatorObserver navigatorObserver = FapNavigatorObserver();
-  
+
   // Core Components
   final SemanticsIndexer _indexer = SemanticsIndexer();
   late final Recorder _recorder;
@@ -66,12 +67,14 @@ class FapAgent {
     print('FapAgent: Initializing...');
     if (_instance != null) return;
     _instance = FapAgent._(config);
-    
+
     // Ensure semantics are enabled
     WidgetsFlutterBinding.ensureInitialized();
     _instance!._semanticsHandle = SemanticsBinding.instance.ensureSemantics();
-    print('FapAgent: Semantics enabled. Handle: ${_instance!._semanticsHandle}');
-    
+    print(
+      'FapAgent: Semantics enabled. Handle: ${_instance!._semanticsHandle}',
+    );
+
     _instance!._setupObservability();
     await _instance!._start();
   }
@@ -81,7 +84,8 @@ class FapAgent {
     SchedulerBinding.instance.addTimingsCallback((timings) {
       for (final timing in timings) {
         _frameTimings.add(timing);
-        if (_frameTimings.length > config.maxFrameTimings) _frameTimings.removeFirst();
+        if (_frameTimings.length > config.maxFrameTimings)
+          _frameTimings.removeFirst();
       }
     });
 
@@ -105,17 +109,18 @@ class FapAgent {
 
   Future<void> _start() async {
     if (!config.enabled) return;
-    
+
     final rpcHandler = FapRpcHandlerImpl(
       agent: this,
       indexer: _indexer,
       recorder: _recorder,
     );
-    
+
     _server = FapServer(
-      port: config.port, 
+      port: config.port,
       rpcHandler: rpcHandler,
       secretToken: config.secretToken,
+      bindAddress: config.bindAddress,
     );
 
     // Wire up Recorder events
@@ -133,11 +138,15 @@ class FapAgent {
 
   // Public API for RPC Handler
   List<Map<String, int>> getPerformanceMetrics() {
-    return _frameTimings.map((t) => {
-      'build': t.buildDuration.inMicroseconds,
-      'raster': t.rasterDuration.inMicroseconds,
-      'total': t.totalSpan.inMicroseconds,
-    }).toList();
+    return _frameTimings
+        .map(
+          (t) => {
+            'build': t.buildDuration.inMicroseconds,
+            'raster': t.rasterDuration.inMicroseconds,
+            'total': t.totalSpan.inMicroseconds,
+          },
+        )
+        .toList();
   }
 
   List<String> getLogs() {

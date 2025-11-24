@@ -48,23 +48,25 @@ class FapElement {
     }
     return result;
   }
+
   bool get isInteractable {
     // 1. Check if invisible
     if (node.isInvisible) return false;
     if (node.isMergedIntoParent) return false;
 
     // 2. Check if disabled
-    if (node.hasFlag(SemanticsFlag.hasEnabledState) && !node.hasFlag(SemanticsFlag.isEnabled)) {
+    if (node.hasFlag(SemanticsFlag.hasEnabledState) &&
+        !node.hasFlag(SemanticsFlag.isEnabled)) {
       return false;
     }
 
     // 3. Check if offscreen (basic check)
     // We need screen size for this. For now, let's assume if width/height is 0 it's not interactable.
     if (globalRect.width <= 0 || globalRect.height <= 0) return false;
-    
+
     // Note: Checking against screen bounds requires passing window size to FapElement or checking here.
     // For now, 0-size check is a good start.
-    
+
     return true;
   }
 }
@@ -72,7 +74,6 @@ class FapElement {
 class SemanticsIndexer {
   final Map<String, FapElement> _elements = {};
   Map<String, FapElement> _previousElements = {};
-  int _nextId = 1;
 
   Map<String, FapElement> get elements => _elements;
 
@@ -93,8 +94,7 @@ class SemanticsIndexer {
 
     _elements.clear();
     _nodeIdToElement.clear();
-    _nextId = 1;
-    
+
     // 1. Index Semantics
     for (final view in RendererBinding.instance.renderViews) {
       final owner = view.owner?.semanticsOwner;
@@ -102,18 +102,19 @@ class SemanticsIndexer {
         _traverse(owner!.rootSemanticsNode!, Matrix4.identity());
       }
     }
-    
+
     // Fallback
     if (_elements.isEmpty) {
-       final rootOwner = RendererBinding.instance.rootPipelineOwner.semanticsOwner;
-       if (rootOwner?.rootSemanticsNode != null) {
-         _traverse(rootOwner!.rootSemanticsNode!, Matrix4.identity());
-       }
+      final rootOwner =
+          RendererBinding.instance.rootPipelineOwner.semanticsOwner;
+      if (rootOwner?.rootSemanticsNode != null) {
+        _traverse(rootOwner!.rootSemanticsNode!, Matrix4.identity());
+      }
     }
 
     // 2. Enrich with Widget Type/Key info
     _enrichElements();
-    
+
     print('SemanticsIndexer: Indexed ${_elements.length} elements.');
   }
 
@@ -123,14 +124,13 @@ class SemanticsIndexer {
         : parentTransform;
 
     if (!node.isInvisible) {
-      final globalRect = MatrixUtils.transformRect(nodeGlobalTransform, node.rect);
-      final id = 'fap-${_nextId++}';
-      
-      final element = FapElement(
-        id: id,
-        node: node,
-        globalRect: globalRect,
+      final globalRect = MatrixUtils.transformRect(
+        nodeGlobalTransform,
+        node.rect,
       );
+      final id = 'fap-${node.id}';
+
+      final element = FapElement(id: id, node: node, globalRect: globalRect);
       _elements[id] = element;
       _nodeIdToElement[node.id] = element;
     }
@@ -140,23 +140,6 @@ class SemanticsIndexer {
       return true;
     });
   }
-
-  // ... _enrichElements and _traverseElements remain same ...
-  // But I need to make sure I don't delete them.
-  // Since I am replacing from line 55 (reindex) to end, I need to include them.
-  // Wait, I should use replace_file_content carefully.
-  // I will replace `reindex` and `_traverse` first to add `_nodeIdToElement`.
-  // Then replace `find`.
-
-  // Let's do it in chunks if possible, or just replace the whole class content if it's easier.
-  // The file is small enough.
-
-  // Actually, I'll just replace `reindex` and `_traverse` first.
-  // And then `find`.
-
-  // Wait, `_enrichElements` uses `_elements`.
-  // I'll replace `reindex` and `_traverse` first.
-
 
   void _enrichElements() {
     final rootElement = WidgetsBinding.instance.rootElement;
@@ -210,26 +193,27 @@ class SemanticsIndexer {
       if (key is ValueKey<String>) {
         fapElement.key = key.value;
       } else {
-         String keyStr = key.toString();
-         if (keyStr.startsWith("[<'") && keyStr.endsWith("'>]")) {
-           keyStr = keyStr.substring(3, keyStr.length - 3);
-         } else if (keyStr.startsWith("[<") && keyStr.endsWith(">]")) {
-           keyStr = keyStr.substring(2, keyStr.length - 2);
-         }
-         fapElement.key = keyStr;
+        String keyStr = key.toString();
+        if (keyStr.startsWith("[<'") && keyStr.endsWith("'>]")) {
+          keyStr = keyStr.substring(3, keyStr.length - 3);
+        } else if (keyStr.startsWith("[<") && keyStr.endsWith(">]")) {
+          keyStr = keyStr.substring(2, keyStr.length - 2);
+        }
+        fapElement.key = keyStr;
       }
       // If we found a key, use this widget's type
       fapElement.type = element.widget.runtimeType.toString();
     }
 
     // Extract Type (heuristic)
-    if (fapElement.type == null && !element.widget.runtimeType.toString().startsWith('_')) {
-       fapElement.type = element.widget.runtimeType.toString();
+    if (fapElement.type == null &&
+        !element.widget.runtimeType.toString().startsWith('_')) {
+      fapElement.type = element.widget.runtimeType.toString();
     }
   }
 
   List<FapElement> find(Selector selector) {
-    reindex(); 
+    reindex();
     var candidates = _elements.values.toList();
     return _findRecursive(candidates, selector);
   }
@@ -244,23 +228,23 @@ class SemanticsIndexer {
 
     // 2. If there is a next selector, proceed based on combinator
     var nextScope = <FapElement>[];
-    
+
     for (var match in matches) {
       if (selector.combinator == SelectorCombinator.child) {
         // Direct children
         match.node.visitChildren((child) {
-           final childElement = _nodeIdToElement[child.id];
-           if (childElement != null) {
-             nextScope.add(childElement);
-           }
-           return true;
+          final childElement = _nodeIdToElement[child.id];
+          if (childElement != null) {
+            nextScope.add(childElement);
+          }
+          return true;
         });
       } else if (selector.combinator == SelectorCombinator.descendant) {
         // All descendants
         _collectDescendants(match.node, nextScope);
       }
     }
-    
+
     return _findRecursive(nextScope, selector.next!);
   }
 
@@ -276,137 +260,151 @@ class SemanticsIndexer {
   }
 
   bool _matches(FapElement element, Selector selector) {
-      final data = element.node.getSemanticsData();
-      
-      // Match ID
-      if (selector.id != null && element.id != selector.id) return false;
+    final data = element.node.getSemanticsData();
 
-      // Match Text / Label
-      if (selector.text != null && data.label != selector.text && data.value != selector.text && data.hint != selector.text) return false;
-      if (selector.label != null && data.label != selector.label) return false;
-      
-      // Match Role
-      if (selector.role != null) {
-        final role = selector.role!;
-        bool roleMatched = false;
-        
-        // Map common roles to SemanticsFlags
-        switch (role) {
-          case 'button':
-            if (element.node.hasFlag(SemanticsFlag.isButton)) roleMatched = true;
-            break;
-          case 'textField':
-            if (element.node.hasFlag(SemanticsFlag.isTextField)) roleMatched = true;
-            break;
-          case 'slider':
-            if (element.node.hasFlag(SemanticsFlag.isSlider)) roleMatched = true;
-            break;
-          case 'switch':
-          case 'toggle':
-            if (element.node.hasFlag(SemanticsFlag.hasToggledState)) roleMatched = true;
-            break;
-          case 'checkbox':
-            if (element.node.hasFlag(SemanticsFlag.hasCheckedState)) roleMatched = true;
-            break;
-          case 'image':
-            if (element.node.hasFlag(SemanticsFlag.isImage)) roleMatched = true;
-            break;
-          case 'header':
-            if (element.node.hasFlag(SemanticsFlag.isHeader)) roleMatched = true;
-            break;
-          case 'link':
-            if (element.node.hasFlag(SemanticsFlag.isLink)) roleMatched = true;
-            break;
-          case 'list':
-            // Heuristic: has children and scrollable? 
-            // SemanticsFlag doesn't have explicit 'isList'.
-            // But we can check if it's a scroll container?
-            // For now, let's stick to explicit flags.
-            break;
-          default:
-            // Try to match flag name case-insensitively
-            for (final flag in SemanticsFlag.values) {
-               if (flag.toString().split('.').last.toLowerCase() == role.toLowerCase()) {
-                 if (element.node.hasFlag(flag)) roleMatched = true;
-                 break;
-               }
-               // Also try 'is' prefix removal (e.g. role='button' matches isButton)
-               if (flag.toString().split('.').last.toLowerCase() == 'is${role.toLowerCase()}') {
-                 if (element.node.hasFlag(flag)) roleMatched = true;
-                 break;
-               }
+    // Match ID
+    if (selector.id != null && element.id != selector.id) return false;
+
+    // Match Text / Label
+    if (selector.text != null &&
+        data.label != selector.text &&
+        data.value != selector.text &&
+        data.hint != selector.text)
+      return false;
+    if (selector.label != null && data.label != selector.label) return false;
+
+    // Match Role
+    if (selector.role != null) {
+      final role = selector.role!;
+      bool roleMatched = false;
+
+      // Map common roles to SemanticsFlags
+      switch (role) {
+        case 'button':
+          if (element.node.hasFlag(SemanticsFlag.isButton)) roleMatched = true;
+          break;
+        case 'textField':
+          if (element.node.hasFlag(SemanticsFlag.isTextField))
+            roleMatched = true;
+          break;
+        case 'slider':
+          if (element.node.hasFlag(SemanticsFlag.isSlider)) roleMatched = true;
+          break;
+        case 'switch':
+        case 'toggle':
+          if (element.node.hasFlag(SemanticsFlag.hasToggledState))
+            roleMatched = true;
+          break;
+        case 'checkbox':
+          if (element.node.hasFlag(SemanticsFlag.hasCheckedState))
+            roleMatched = true;
+          break;
+        case 'image':
+          if (element.node.hasFlag(SemanticsFlag.isImage)) roleMatched = true;
+          break;
+        case 'header':
+          if (element.node.hasFlag(SemanticsFlag.isHeader)) roleMatched = true;
+          break;
+        case 'link':
+          if (element.node.hasFlag(SemanticsFlag.isLink)) roleMatched = true;
+          break;
+        case 'list':
+          // Heuristic: has children and scrollable?
+          // SemanticsFlag doesn't have explicit 'isList'.
+          // But we can check if it's a scroll container?
+          // For now, let's stick to explicit flags.
+          break;
+        default:
+          // Try to match flag name case-insensitively
+          for (final flag in SemanticsFlag.values) {
+            if (flag.toString().split('.').last.toLowerCase() ==
+                role.toLowerCase()) {
+              if (element.node.hasFlag(flag)) roleMatched = true;
+              break;
             }
-        }
-        if (!roleMatched) return false;
+            // Also try 'is' prefix removal (e.g. role='button' matches isButton)
+            if (flag.toString().split('.').last.toLowerCase() ==
+                'is${role.toLowerCase()}') {
+              if (element.node.hasFlag(flag)) roleMatched = true;
+              break;
+            }
+          }
+      }
+      if (!roleMatched) return false;
+    }
+
+    // Match Key
+    if (selector.key != null) {
+      if (element.key != selector.key) return false;
+    }
+
+    // Match Type
+    if (selector.type != null) {
+      if (element.type != selector.type) return false;
+    }
+
+    // Match Attributes
+    for (final entry in selector.attributes.entries) {
+      // Check metadata first
+      if (element.metadata.containsKey(entry.key)) {
+        if (element.metadata[entry.key] != entry.value) return false;
+        continue;
+      }
+      // Fallback to semantics data
+      if (data.label != entry.value &&
+          data.value != entry.value &&
+          data.hint != entry.value)
+        return false;
+    }
+
+    // Match Regex Attributes
+    for (final entry in selector.regexAttributes.entries) {
+      final pattern = entry.value;
+      bool matched = false;
+
+      // Check metadata
+      if (element.metadata.containsKey(entry.key)) {
+        if (pattern.hasMatch(element.metadata[entry.key]!)) matched = true;
       }
 
-      // Match Key
-      if (selector.key != null) {
-        if (element.key != selector.key) return false;
+      // Check standard fields
+      if (!matched) {
+        if (entry.key == 'text' || entry.key == 'label') {
+          if (pattern.hasMatch(data.label)) matched = true;
+        }
+        if (entry.key == 'text' || entry.key == 'value') {
+          if (pattern.hasMatch(data.value)) matched = true;
+        }
+        if (entry.key == 'text' || entry.key == 'hint') {
+          if (pattern.hasMatch(data.hint)) matched = true;
+        }
+        if (entry.key == 'key' && element.key != null) {
+          if (pattern.hasMatch(element.key!)) matched = true;
+        }
+        if (entry.key == 'type' && element.type != null) {
+          if (pattern.hasMatch(element.type!)) matched = true;
+        }
       }
 
-      // Match Type
-      if (selector.type != null) {
-        if (element.type != selector.type) return false;
+      if (!matched) {
+        print(
+          'Regex mismatch: ${entry.key}=${pattern.pattern} against label="${data.label}", value="${data.value}"',
+        );
+        return false;
       }
+    }
 
-      // Match Attributes
-      for (final entry in selector.attributes.entries) {
-        // Check metadata first
-        if (element.metadata.containsKey(entry.key)) {
-            if (element.metadata[entry.key] != entry.value) return false;
-            continue;
-        }
-        // Fallback to semantics data
-        if (data.label != entry.value && data.value != entry.value && data.hint != entry.value) return false;
-      }
-
-      // Match Regex Attributes
-      for (final entry in selector.regexAttributes.entries) {
-        final pattern = entry.value;
-        bool matched = false;
-        
-        // Check metadata
-        if (element.metadata.containsKey(entry.key)) {
-            if (pattern.hasMatch(element.metadata[entry.key]!)) matched = true;
-        }
-        
-        // Check standard fields
-        if (!matched) {
-             if (entry.key == 'text' || entry.key == 'label') {
-                 if (pattern.hasMatch(data.label)) matched = true;
-             }
-             if (entry.key == 'text' || entry.key == 'value') {
-                 if (pattern.hasMatch(data.value)) matched = true;
-             }
-             if (entry.key == 'text' || entry.key == 'hint') {
-                 if (pattern.hasMatch(data.hint)) matched = true;
-             }
-             if (entry.key == 'key' && element.key != null) {
-                 if (pattern.hasMatch(element.key!)) matched = true;
-             }
-             if (entry.key == 'type' && element.type != null) {
-                 if (pattern.hasMatch(element.type!)) matched = true;
-             }
-        }
-        
-        if (!matched) {
-          print('Regex mismatch: ${entry.key}=${pattern.pattern} against label="${data.label}", value="${data.value}"');
-          return false;
-        }
-      }
-      
-      return true;
+    return true;
   }
 
   FapElement? hitTest(Offset point) {
     // Iterate in reverse order (top-most first usually, though semantics order isn't strictly z-order)
     // Actually, semantics traversal is usually paint order.
     // We want the deepest child that contains the point.
-    // Since we flatten the tree into _elements, we don't have hierarchy easily accessible for hit testing 
+    // Since we flatten the tree into _elements, we don't have hierarchy easily accessible for hit testing
     // without re-traversing or keeping parent links.
     // However, smaller elements usually sit on top of larger ones.
-    
+
     FapElement? bestMatch;
     double bestArea = double.infinity;
     // Heuristic score: lower is better
@@ -415,7 +413,7 @@ class SemanticsIndexer {
     for (final element in _elements.values) {
       if (element.globalRect.contains(point) && element.isInteractable) {
         final area = element.globalRect.width * element.globalRect.height;
-        
+
         // Base score is area
         double score = area;
 
@@ -435,7 +433,6 @@ class SemanticsIndexer {
     return bestMatch;
   }
 
-
   Map<String, dynamic> computeDiff() {
     final added = <Map<String, dynamic>>[];
     final removed = <String>[];
@@ -445,7 +442,7 @@ class SemanticsIndexer {
     for (final entry in _elements.entries) {
       final id = entry.key;
       final element = entry.value;
-      
+
       if (!_previousElements.containsKey(id)) {
         // New element
         added.add(element.toJson());
@@ -465,22 +462,18 @@ class SemanticsIndexer {
       }
     }
 
-    return {
-      'added': added,
-      'removed': removed,
-      'updated': updated,
-    };
+    return {'added': added, 'removed': removed, 'updated': updated};
   }
 
   bool _hasChanged(FapElement prev, FapElement curr) {
     // Compare essential fields
     if (prev.type != curr.type) return true;
     if (prev.key != curr.key) return true;
-    
+
     // Semantics Data
     final prevData = prev.node.getSemanticsData();
     final currData = curr.node.getSemanticsData();
-    
+
     if (prevData.label != currData.label) return true;
     if (prevData.value != currData.value) return true;
     if (prevData.hint != currData.hint) return true;

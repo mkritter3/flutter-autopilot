@@ -8,35 +8,35 @@ class ActionExecutor {
   // Helper to get next pointer ID
   int _nextPointerId() => ++_pointerId;
 
-  Future<Map<String, dynamic>> tap(Rect globalRect, {SemanticsNode? semanticsNode}) async {
+  Future<Map<String, dynamic>> tap(
+    Rect globalRect, {
+    SemanticsNode? semanticsNode,
+  }) async {
     final center = globalRect.center;
     final pointer = _nextPointerId();
+    final kind = PointerDeviceKind.touch;
 
     print('ActionExecutor.tap: $center');
 
-    // Hover
-    _dispatchPointerEvent(PointerHoverEvent(
-      position: center,
-      kind: PointerDeviceKind.mouse,
-    ));
-    await Future.delayed(const Duration(milliseconds: 50));
-
-    // Down
-    _dispatchPointerEvent(PointerDownEvent(
-      position: center,
-      pointer: pointer,
-      kind: PointerDeviceKind.mouse,
-      buttons: kPrimaryMouseButton,
-    ));
+    _dispatchPointerEvent(
+      PointerDownEvent(
+        position: center,
+        pointer: pointer,
+        kind: kind,
+        buttons: kPrimaryButton,
+      ),
+    );
     await Future.delayed(const Duration(milliseconds: 100));
 
     // Up
-    _dispatchPointerEvent(PointerUpEvent(
-      position: center,
-      pointer: pointer,
-      kind: PointerDeviceKind.mouse,
-      buttons: 0,
-    ));
+    _dispatchPointerEvent(
+      PointerUpEvent(
+        position: center,
+        pointer: pointer,
+        kind: kind,
+        buttons: 0,
+      ),
+    );
 
     // Fallback: Perform semantic action
     if (semanticsNode != null && semanticsNode.owner != null) {
@@ -44,132 +44,165 @@ class ActionExecutor {
       semanticsNode.owner!.performAction(semanticsNode.id, SemanticsAction.tap);
     }
 
-    return {'status': 'tapped', 'center': {'x': center.dx, 'y': center.dy}};
+    return {
+      'status': 'tapped',
+      'center': {'x': center.dx, 'y': center.dy},
+    };
   }
 
   Future<Map<String, dynamic>> tapAt(Offset position) async {
     final pointer = _nextPointerId();
+    final kind = PointerDeviceKind.touch;
     print('ActionExecutor.tapAt: $position');
 
-    // Hover
-    _dispatchPointerEvent(PointerHoverEvent(
-      position: position,
-      kind: PointerDeviceKind.mouse,
-    ));
-    await Future.delayed(const Duration(milliseconds: 50));
-
     // Down
-    _dispatchPointerEvent(PointerDownEvent(
-      position: position,
-      pointer: pointer,
-      kind: PointerDeviceKind.mouse,
-      buttons: kPrimaryMouseButton,
-    ));
+    _dispatchPointerEvent(
+      PointerDownEvent(
+        position: position,
+        pointer: pointer,
+        kind: kind,
+        buttons: kPrimaryButton,
+      ),
+    );
     await Future.delayed(const Duration(milliseconds: 100));
 
     // Up
-    _dispatchPointerEvent(PointerUpEvent(
-      position: position,
-      pointer: pointer,
-      kind: PointerDeviceKind.mouse,
-      buttons: 0,
-    ));
+    _dispatchPointerEvent(
+      PointerUpEvent(
+        position: position,
+        pointer: pointer,
+        kind: kind,
+        buttons: 0,
+      ),
+    );
 
     return {'status': 'tapped_at', 'x': position.dx, 'y': position.dy};
   }
 
-  Future<Map<String, dynamic>> doubleTap(Rect globalRect) async {
+  Future<Map<String, dynamic>> doubleTap(
+    Rect globalRect, {
+    SemanticsNode? semanticsNode,
+  }) async {
     final center = globalRect.center;
     print('ActionExecutor.doubleTap: $center');
 
     // First tap
-    await tap(globalRect);
-    
+    await tap(globalRect, semanticsNode: semanticsNode);
+
     // Delay between taps
     await Future.delayed(const Duration(milliseconds: 100));
-    
+
     // Second tap
-    await tap(globalRect);
+    await tap(globalRect, semanticsNode: semanticsNode);
 
     return {'status': 'double_tapped'};
   }
 
-  Future<Map<String, dynamic>> longPress(Rect globalRect, {Duration duration = const Duration(milliseconds: 800)}) async {
+  Future<Map<String, dynamic>> longPress(
+    Rect globalRect, {
+    Duration duration = const Duration(milliseconds: 800),
+  }) async {
     final center = globalRect.center;
     final pointer = _nextPointerId();
-    print('ActionExecutor.longPress: $center duration=${duration.inMilliseconds}ms');
+    print(
+      'ActionExecutor.longPress: $center duration=${duration.inMilliseconds}ms',
+    );
 
     // Down
-    _dispatchPointerEvent(PointerDownEvent(
-      position: center,
-      pointer: pointer,
-      kind: PointerDeviceKind.touch, // Touch is often better for long press
-    ));
+    _dispatchPointerEvent(
+      PointerDownEvent(
+        position: center,
+        pointer: pointer,
+        kind: PointerDeviceKind.touch, // Touch is often better for long press
+        buttons: kPrimaryButton,
+      ),
+    );
 
     // Wait
     await Future.delayed(duration);
 
     // Up
-    _dispatchPointerEvent(PointerUpEvent(
-      position: center,
-      pointer: pointer,
-      kind: PointerDeviceKind.touch,
-    ));
+    _dispatchPointerEvent(
+      PointerUpEvent(
+        position: center,
+        pointer: pointer,
+        kind: PointerDeviceKind.touch,
+        buttons: 0,
+      ),
+    );
 
     return {'status': 'long_pressed'};
   }
 
-  Future<Map<String, dynamic>> scroll(Rect globalRect, double dx, double dy, {Duration duration = const Duration(milliseconds: 300)}) async {
+  Future<Map<String, dynamic>> scroll(
+    Rect globalRect,
+    double dx,
+    double dy, {
+    Duration duration = const Duration(milliseconds: 300),
+  }) async {
     final start = globalRect.center;
-    final end = start.translate(-dx, -dy); // Scroll moves content, so drag is opposite? 
+    final end = start.translate(
+      -dx,
+      -dy,
+    ); // Scroll moves content, so drag is opposite?
     // Actually, "scroll down" usually means drag finger UP.
     // If user says "scroll(dx: 0, dy: 100)", they likely mean "scroll content by 100 pixels".
     // To scroll content down (move viewport up), we drag finger UP.
     // Let's assume dx/dy are "scroll deltas".
     // Drag vector = -scroll delta.
-    
+
     return drag(start, end, duration: duration);
   }
 
-  Future<Map<String, dynamic>> drag(Offset start, Offset end, {Duration duration = const Duration(milliseconds: 300)}) async {
+  Future<Map<String, dynamic>> drag(
+    Offset start,
+    Offset end, {
+    Duration duration = const Duration(milliseconds: 300),
+  }) async {
     final pointer = _nextPointerId();
+    final kind = PointerDeviceKind.touch;
     print('ActionExecutor.drag: $start -> $end');
 
     // Down
-    _dispatchPointerEvent(PointerDownEvent(
-      position: start,
-      pointer: pointer,
-      kind: PointerDeviceKind.mouse,
-      buttons: kPrimaryMouseButton,
-    ));
+    _dispatchPointerEvent(
+      PointerDownEvent(
+        position: start,
+        pointer: pointer,
+        kind: kind,
+        buttons: kPrimaryButton,
+      ),
+    );
 
     // Move
     final steps = 20;
     final stepDuration = duration ~/ steps;
     final delta = (end - start) / steps.toDouble();
-    
+
     var current = start;
     for (var i = 0; i < steps; i++) {
       await Future.delayed(stepDuration);
       current += delta;
-      _dispatchPointerEvent(PointerMoveEvent(
-        position: current,
-        pointer: pointer,
-        kind: PointerDeviceKind.mouse,
-        buttons: kPrimaryMouseButton,
-        delta: delta,
-      ));
+      _dispatchPointerEvent(
+        PointerMoveEvent(
+          position: current,
+          pointer: pointer,
+          kind: kind,
+          buttons: kPrimaryButton,
+          delta: delta,
+        ),
+      );
     }
 
     // Up
-    _dispatchPointerEvent(PointerUpEvent(
-      position: end,
-      pointer: pointer,
-      kind: PointerDeviceKind.mouse,
-      buttons: 0,
-    ));
+    _dispatchPointerEvent(
+      PointerUpEvent(position: end, pointer: pointer, kind: kind, buttons: 0),
+    );
 
-    return {'status': 'dragged', 'start': {'x': start.dx, 'y': start.dy}, 'end': {'x': end.dx, 'y': end.dy}};
+    return {
+      'status': 'dragged',
+      'start': {'x': start.dx, 'y': start.dy},
+      'end': {'x': end.dx, 'y': end.dy},
+    };
   }
 
   Future<void> enterText(SemanticsNode node, String text) async {
@@ -180,9 +213,15 @@ class ActionExecutor {
   }
 
   Future<void> setSelection(SemanticsNode node, int base, int extent) async {
-    debugPrint('ActionExecutor: setSelection ($base, $extent) on node ${node.id}');
+    debugPrint(
+      'ActionExecutor: setSelection ($base, $extent) on node ${node.id}',
+    );
     if (node.owner != null) {
-      node.owner!.performAction(node.id, SemanticsAction.setSelection, TextSelection(baseOffset: base, extentOffset: extent));
+      node.owner!.performAction(
+        node.id,
+        SemanticsAction.setSelection,
+        TextSelection(baseOffset: base, extentOffset: extent),
+      );
     }
   }
 

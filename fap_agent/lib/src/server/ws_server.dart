@@ -10,6 +10,7 @@ class FapServer {
   final int port;
   final FapRpcHandler rpcHandler;
   final String? secretToken;
+  final InternetAddress bindAddress;
   HttpServer? _server;
   final List<json_rpc.Peer> _peers = [];
 
@@ -17,7 +18,8 @@ class FapServer {
     required this.port,
     required this.rpcHandler,
     this.secretToken,
-  });
+    InternetAddress? bindAddress,
+  }) : bindAddress = bindAddress ?? InternetAddress.loopbackIPv4;
 
   Future<void> start() async {
     try {
@@ -28,8 +30,9 @@ class FapServer {
         return;
       }
 
-      _server = await HttpServer.bind(InternetAddress.loopbackIPv4, port);
-      print('FAP Agent listening on ws://localhost:$port');
+      final address = await _resolveBindAddress();
+      _server = await HttpServer.bind(address, port);
+      print('FAP Agent listening on ws://${_formatAddress(address)}:$port');
 
       _server!.listen((HttpRequest request) async {
         if (WebSocketTransformer.isUpgradeRequest(request)) {
@@ -72,26 +75,60 @@ class FapServer {
     }
   }
 
+  Future<InternetAddress> _resolveBindAddress() async {
+    final override = Platform.environment['FAP_BIND_ADDRESS'];
+    if (override != null && override.isNotEmpty) {
+      final parsed = InternetAddress.tryParse(override);
+      if (parsed != null) {
+        return parsed;
+      }
+      try {
+        final lookup = await InternetAddress.lookup(override);
+        if (lookup.isNotEmpty) {
+          return lookup.first;
+        }
+      } catch (err) {
+        print(
+          'FAP Agent: Failed to resolve FAP_BIND_ADDRESS="$override" ($err). Using ${bindAddress.address}.',
+        );
+      }
+    }
+    return bindAddress;
+  }
+
+  String _formatAddress(InternetAddress address) {
+    if (address.address == InternetAddress.anyIPv4.address) {
+      return '0.0.0.0';
+    }
+    if (address.address == InternetAddress.anyIPv6.address) {
+      return '[::]';
+    }
+    return address.address;
+  }
+
   void _handleWebSocket(WebSocket socket) {
     print('FAP Client connected');
 
     // Create a StreamChannel from the WebSocket
     final channel = StreamChannel(socket, socket).cast<String>();
-    
+
     // Create a JSON-RPC Peer (supports bidirectional)
     final peer = json_rpc.Peer(channel);
     _peers.add(peer);
-    
+
     // Register methods
     rpcHandler.registerMethods(peer);
-    
+
     // Listen
-    peer.listen().then((_) {
-      _peers.remove(peer);
-      print('FAP Client disconnected');
-    }).catchError((error) {
-      _peers.remove(peer);
-      print('FAP Client error: $error');
-    });
+    peer
+        .listen()
+        .then((_) {
+          _peers.remove(peer);
+          print('FAP Client disconnected');
+        })
+        .catchError((error) {
+          _peers.remove(peer);
+          print('FAP Client error: $error');
+        });
   }
 }
