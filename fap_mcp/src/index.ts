@@ -106,6 +106,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                             type: "number",
                             description: "Vertical scroll amount.",
                         },
+                        durationMs: {
+                            type: "number",
+                            description: "Duration of scroll animation in milliseconds (default 300).",
+                        },
                     },
                     required: ["selector", "dx", "dy"],
                 },
@@ -125,10 +129,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     type: "object",
                     properties: {
                         selector: { type: "string", description: "The element to drag." },
-                        target_selector: { type: "string", description: "The element to drag to (optional)." },
-                        dx: { type: "number", description: "X offset to drag (optional, used if target_selector not provided)." },
-                        dy: { type: "number", description: "Y offset to drag (optional, used if target_selector not provided)." },
-                        duration_ms: { type: "number", description: "Duration of drag in ms (default 300)." },
+                        targetSelector: { type: "string", description: "The element to drag to (optional)." },
+                        dx: { type: "number", description: "X offset to drag (optional, used if targetSelector not provided)." },
+                        dy: { type: "number", description: "Y offset to drag (optional, used if targetSelector not provided)." },
+                        durationMs: { type: "number", description: "Duration of drag in ms (default 300)." },
                     },
                     required: ["selector"],
                 },
@@ -140,7 +144,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     type: "object",
                     properties: {
                         selector: { type: "string" },
-                        duration_ms: { type: "number", description: "Duration in ms (default 800)." },
+                        durationMs: { type: "number", description: "Duration in ms (default 800)." },
                     },
                     required: ["selector"],
                 },
@@ -313,30 +317,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             case "drag": {
                 const args = request.params.arguments as {
                     selector: string;
-                    target_selector?: string;
+                    targetSelector?: string;
                     dx?: number;
                     dy?: number;
-                    duration_ms?: number
+                    durationMs?: number
                 };
 
                 let target: string | { x: number; y: number };
-                if (args.target_selector) {
-                    target = args.target_selector;
+                if (args.targetSelector) {
+                    target = args.targetSelector;
                 } else if (args.dx !== undefined && args.dy !== undefined) {
                     target = { x: args.dx, y: args.dy };
                 } else {
-                    throw new McpError(ErrorCode.InvalidParams, "Either target_selector or dx/dy must be provided for drag");
+                    throw new McpError(ErrorCode.InvalidParams, "Either targetSelector or dx/dy must be provided for drag");
                 }
 
-                const result = await fap.drag(args.selector, target, args.duration_ms);
+                const result = await fap.drag(args.selector, target, args.durationMs);
                 return {
                     content: [{ type: "text", text: `Dragged: ${JSON.stringify(result)}` }],
                 };
             }
 
             case "long_press": {
-                const { selector, duration_ms } = request.params.arguments as { selector: string; duration_ms?: number };
-                const result = await fap.longPress(selector, duration_ms);
+                const { selector, durationMs } = request.params.arguments as { selector: string; durationMs?: number };
+                const result = await fap.longPress(selector, durationMs);
                 return {
                     content: [{ type: "text", text: `Long Pressed: ${JSON.stringify(result)}` }],
                 };
