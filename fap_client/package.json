@@ -1,7 +1,7 @@
 {
     "name": "fap-client",
     "version": "0.0.1",
-    "description": "Node.js client for Flutter Agent Protocol",
+    "description": "TypeScript/Node.js client SDK for the Flutter Agent Protocol (FAP) - enabling AI-driven automation of Flutter applications",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "bin": {
@@ -11,6 +11,23 @@
         "build": "tsc",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
+    "keywords": [
+        "flutter",
+        "testing",
+        "automation",
+        "agent",
+        "ai",
+        "llm",
+        "rpc",
+        "websocket"
+    ],
+    "author": "FAP Contributors",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/YOUR_USERNAME/flutter-agent-protocol.git"
+    },
+    "homepage": "https://github.com/YOUR_USERNAME/flutter-agent-protocol#readme",
     "dependencies": {
         "ws": "^8.16.0",
         "uuid": "^9.0.1"

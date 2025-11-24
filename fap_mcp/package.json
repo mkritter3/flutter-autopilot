@@ -1,16 +1,30 @@
 {
   "name": "fap_mcp",
   "version": "1.0.0",
-  "description": "",
+  "description": "Model Context Protocol (MCP) server for the Flutter Agent Protocol - enables AI assistants like Claude to interact with Flutter applications",
   "main": "index.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "watch": "tsc --watch"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "flutter",
+    "testing",
+    "automation",
+    "ai",
+    "claude",
+    "anthropic"
+  ],
+  "author": "FAP Contributors",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/YOUR_USERNAME/flutter-agent-protocol.git"
+  },
+  "homepage": "https://github.com/YOUR_USERNAME/flutter-agent-protocol#readme",
   "type": "commonjs",
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.22.0",
