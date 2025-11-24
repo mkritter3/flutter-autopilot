@@ -6,7 +6,7 @@ FAP is a protocol and set of tools that enables AI agents to interact with Flutt
 
 - **[fap_agent](fap_agent/)**: The Dart package that runs inside your Flutter app. It exposes the WebSocket server and handles UI introspection and interaction.
 - **[fap_client](fap_client/)**: A Node.js/TypeScript client SDK for connecting to the FAP Agent.
-- **[fap_mcp](fap_mcp/)**: An MCP (Model Context Protocol) Server wrapper, allowing agents like Claude Desktop to control your app out-of-the-box.
+- **[fap_mcp](fap_mcp/)**: An MCP (Model Context Protocol) Server wrapper. See [fap_mcp/README.md](fap_mcp/README.md) for installation instructions.
 
 ## Documentation
 
