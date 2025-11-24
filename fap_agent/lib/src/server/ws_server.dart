@@ -112,30 +112,42 @@ class FapServer {
     // Notify agent of connection (enables Semantics on first client)
     rpcHandler.agent.onClientConnected();
 
-    // Create a StreamChannel from the WebSocket
-    final channel = StreamChannel(socket, socket).cast<String>();
+    bool setupSuccessful = false;
 
-    // Create a JSON-RPC Peer (supports bidirectional)
-    final peer = json_rpc.Peer(channel);
-    _peers.add(peer);
+    try {
+      // Create a StreamChannel from the WebSocket
+      final channel = StreamChannel(socket, socket).cast<String>();
 
-    // Register methods
-    rpcHandler.registerMethods(peer);
+      // Create a JSON-RPC Peer (supports bidirectional)
+      final peer = json_rpc.Peer(channel);
+      _peers.add(peer);
 
-    // Listen
-    peer
-        .listen()
-        .then((_) {
-          _peers.remove(peer);
-          print('FAP Client disconnected');
-          // Notify agent of disconnection (disables Semantics when last client leaves)
-          rpcHandler.agent.onClientDisconnected();
-        })
-        .catchError((error) {
-          _peers.remove(peer);
-          print('FAP Client error: $error');
-          // Notify agent of disconnection even on error
-          rpcHandler.agent.onClientDisconnected();
-        });
+      // Register methods
+      rpcHandler.registerMethods(peer);
+
+      // Listen
+      peer
+          .listen()
+          .then((_) {
+            _peers.remove(peer);
+            print('FAP Client disconnected');
+            // Notify agent of disconnection (disables Semantics when last client leaves)
+            rpcHandler.agent.onClientDisconnected();
+          })
+          .catchError((error) {
+            _peers.remove(peer);
+            print('FAP Client error: $error');
+            // Notify agent of disconnection even on error
+            rpcHandler.agent.onClientDisconnected();
+          });
+
+      setupSuccessful = true;
+    } catch (e) {
+      print('FAP Client setup failed: $e');
+      // If setup fails, ensure we decrement the client count
+      if (!setupSuccessful) {
+        rpcHandler.agent.onClientDisconnected();
+      }
+    }
   }
 }

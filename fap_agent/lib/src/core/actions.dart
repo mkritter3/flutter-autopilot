@@ -38,11 +38,10 @@ class ActionExecutor {
       ),
     );
 
-    // Fallback: Perform semantic action
-    if (semanticsNode != null && semanticsNode.owner != null) {
-      print('  Performing SemanticsAction.tap fallback');
-      semanticsNode.owner!.performAction(semanticsNode.id, SemanticsAction.tap);
-    }
+    // NOTE: Semantic action fallback removed to prevent duplicate actions
+    // Pointer events should be sufficient for most widgets
+    // If a widget doesn't respond to touch events, consider using tapAt() or
+    // investigating why the widget doesn't handle PointerEvents properly
 
     return {
       'status': 'tapped',
@@ -207,22 +206,30 @@ class ActionExecutor {
 
   Future<void> enterText(SemanticsNode node, String text) async {
     debugPrint('ActionExecutor: enterText "$text" on node ${node.id}');
-    if (node.owner != null) {
-      node.owner!.performAction(node.id, SemanticsAction.setText, text);
+    if (node.owner == null) {
+      throw StateError(
+        'Cannot enter text: SemanticsNode ${node.id} has no owner. '
+        'Semantics may not be enabled or the node may be detached.',
+      );
     }
+    node.owner!.performAction(node.id, SemanticsAction.setText, text);
   }
 
   Future<void> setSelection(SemanticsNode node, int base, int extent) async {
     debugPrint(
       'ActionExecutor: setSelection ($base, $extent) on node ${node.id}',
     );
-    if (node.owner != null) {
-      node.owner!.performAction(
-        node.id,
-        SemanticsAction.setSelection,
-        TextSelection(baseOffset: base, extentOffset: extent),
+    if (node.owner == null) {
+      throw StateError(
+        'Cannot set selection: SemanticsNode ${node.id} has no owner. '
+        'Semantics may not be enabled or the node may be detached.',
       );
     }
+    node.owner!.performAction(
+      node.id,
+      SemanticsAction.setSelection,
+      TextSelection(baseOffset: base, extentOffset: extent),
+    );
   }
 
   void _dispatchPointerEvent(PointerEvent event) {

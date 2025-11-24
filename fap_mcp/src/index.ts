@@ -171,6 +171,12 @@ function shouldAttemptAdbReverse(config?: ConfigFile): boolean {
 }
 
 function tryAdbReverse(port: number): boolean {
+    // Security: Validate port is a safe integer within valid range
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+        console.error(`tryAdbReverse: Invalid port ${port}, must be 1-65535`);
+        return false;
+    }
+
     try {
         const result = spawnSync("adb", ["reverse", `tcp:${port}`, `tcp:${port}`], { stdio: "ignore" });
         return result.status === 0;

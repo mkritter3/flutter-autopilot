@@ -17,7 +17,8 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    SemanticsBinding.instance.ensureSemantics();
+    // NOTE: Semantics are lazily activated when FAP client connects
+    // Do not manually call ensureSemantics() here as it defeats lazy activation
     return MaterialApp(
       title: 'FAP Example',
       navigatorObservers: [FapAgent.instance.navigatorObserver],
