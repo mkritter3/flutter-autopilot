@@ -71,6 +71,7 @@ class FapElement {
 
 class SemanticsIndexer {
   final Map<String, FapElement> _elements = {};
+  Map<String, FapElement> _previousElements = {};
   int _nextId = 1;
 
   Map<String, FapElement> get elements => _elements;
@@ -86,6 +87,9 @@ class SemanticsIndexer {
       return;
     }
     _lastReindex = now;
+
+    // Save previous state
+    _previousElements = Map.from(_elements);
 
     _elements.clear();
     _nodeIdToElement.clear();
@@ -429,5 +433,70 @@ class SemanticsIndexer {
       }
     }
     return bestMatch;
+  }
+
+
+  Map<String, dynamic> computeDiff() {
+    final added = <Map<String, dynamic>>[];
+    final removed = <String>[];
+    final updated = <Map<String, dynamic>>[];
+
+    // 1. Find Added and Updated
+    for (final entry in _elements.entries) {
+      final id = entry.key;
+      final element = entry.value;
+      
+      if (!_previousElements.containsKey(id)) {
+        // New element
+        added.add(element.toJson());
+      } else {
+        // Existing element, check for changes
+        final prev = _previousElements[id]!;
+        if (_hasChanged(prev, element)) {
+          updated.add(element.toJson());
+        }
+      }
+    }
+
+    // 2. Find Removed
+    for (final id in _previousElements.keys) {
+      if (!_elements.containsKey(id)) {
+        removed.add(id);
+      }
+    }
+
+    return {
+      'added': added,
+      'removed': removed,
+      'updated': updated,
+    };
+  }
+
+  bool _hasChanged(FapElement prev, FapElement curr) {
+    // Compare essential fields
+    if (prev.type != curr.type) return true;
+    if (prev.key != curr.key) return true;
+    
+    // Semantics Data
+    final prevData = prev.node.getSemanticsData();
+    final currData = curr.node.getSemanticsData();
+    
+    if (prevData.label != currData.label) return true;
+    if (prevData.value != currData.value) return true;
+    if (prevData.hint != currData.hint) return true;
+    if (prevData.tooltip != currData.tooltip) return true;
+    if (prevData.actions != currData.actions) return true;
+    if (prevData.flags != currData.flags) return true;
+
+    // Rect
+    if (prev.globalRect != curr.globalRect) return true;
+
+    // Metadata
+    if (prev.metadata.length != curr.metadata.length) return true;
+    for (final key in prev.metadata.keys) {
+      if (prev.metadata[key] != curr.metadata[key]) return true;
+    }
+
+    return false;
   }
 }

@@ -52,6 +52,11 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return _indexer.elements.values.map((e) => e.toJson()).toList();
     });
 
+    peer.registerMethod('getTreeDiff', ([json_rpc.Parameters? params]) {
+      _indexer.reindex();
+      return _indexer.computeDiff();
+    });
+
     peer.registerMethod('getRoute', ([json_rpc.Parameters? params]) {
       return agent.navigatorObserver.currentRoute;
     });

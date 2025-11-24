@@ -22,6 +22,7 @@ export class FapClient {
     private pendingRequests = new Map<string, { resolve: (val: any) => void; reject: (err: any) => void }>();
     private url: string;
     private config: FapConfig;
+    private _elementsCache: Map<string, FapElement> = new Map();
 
     private eventListeners: ((event: any) => void)[] = [];
 
@@ -122,7 +123,28 @@ export class FapClient {
     }
 
     async getTree(): Promise<FapElement[]> {
-        return this.request<FapElement[]>('getTree');
+        try {
+            const diff = await this.request<any>('getTreeDiff');
+            this._applyDiff(diff);
+            return Array.from(this._elementsCache.values());
+        } catch (e) {
+            // Fallback to full tree if diff fails (e.g. old agent)
+            const elements = await this.request<FapElement[]>('getTree');
+            this._elementsCache.clear();
+            elements.forEach(e => this._elementsCache.set(e.id.toString(), e));
+            return elements;
+        }
+    }
+
+    private _applyDiff(diff: { added: FapElement[], removed: string[], updated: FapElement[] }) {
+        // 1. Removed
+        diff.removed.forEach(id => this._elementsCache.delete(id));
+
+        // 2. Added
+        diff.added.forEach(e => this._elementsCache.set(e.id.toString(), e));
+
+        // 3. Updated
+        diff.updated.forEach(e => this._elementsCache.set(e.id.toString(), e));
     }
 
     async getRoute(): Promise<string | null> {
