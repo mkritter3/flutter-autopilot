@@ -38,7 +38,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         tools: [
             {
                 name: "list_elements",
-                description: "Get a hierarchical list of all UI elements on the screen, including their IDs, types, and attributes.",
+                description: "Get a hierarchical list of all UI elements currently visible on the screen. Returns the Flutter semantics tree with element IDs, types, text, labels, keys, and other attributes. Use this FIRST to discover available selectors before attempting to tap or enter text. Note: Custom painters, WebViews, and some platform views may not appear in this tree - use tap_at with visual grounding for those.",
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -46,13 +46,13 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "tap",
-                description: "Tap on a UI element matching the given selector.",
+                description: "Tap on a UI element matching the given selector. Use this for buttons, links, list items, etc. If an element is not exposed in the semantics tree, use tap_at with coordinates instead.",
                 inputSchema: {
                     type: "object",
                     properties: {
                         selector: {
                             type: "string",
-                            description: "The selector to identify the element (e.g., 'text=\"Save\"', 'key=\"submit_btn\"').",
+                            description: "The selector to identify the element. Examples: 'text=\"Save\"' (button text), 'key=\"submit_btn\"' (Flutter Key - best), 'type=\"ElevatedButton\"' (widget type), 'label=\"Submit form\"' (accessibility label). Use list_elements first to see available selectors.",
                         },
                     },
                     required: ["selector"],
@@ -60,29 +60,29 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "tap_at",
-                description: "Tap at a specific screen coordinate (x, y). Use this when you can see an element in the screenshot but cannot find it in the element tree.",
+                description: "Tap at specific screen coordinates (x, y). Use this for Visual Grounding workflows when: 1) An element is visible in the screenshot but not in the semantics tree (e.g., WebView content, custom painters, platform views), 2) You're using a VLM to identify element positions. Always analyze the screenshot first to determine coordinates.",
                 inputSchema: {
                     type: "object",
                     properties: {
-                        x: { type: "number", description: "X coordinate" },
-                        y: { type: "number", description: "Y coordinate" },
+                        x: { type: "number", description: "X coordinate in pixels from the left edge of the screen" },
+                        y: { type: "number", description: "Y coordinate in pixels from the top edge of the screen" },
                     },
                     required: ["x", "y"],
                 },
             },
             {
                 name: "enter_text",
-                description: "Enter text into a text field matching the given selector.",
+                description: "Enter text into a text field matching the given selector. Use this to type into input fields, textareas, etc. The field must have focus (tap it first if needed).",
                 inputSchema: {
                     type: "object",
                     properties: {
                         selector: {
                             type: "string",
-                            description: "The selector to identify the text field.",
+                            description: "The selector to identify the text field. Examples: 'key=\"email_field\"' (best - uses Flutter Key), 'text=\"Email\"' (label text), 'type=\"TextField\"' (widget type). Prefer key selectors when available.",
                         },
                         text: {
                             type: "string",
-                            description: "The text to enter.",
+                            description: "The text to type into the field (e.g., 'user@example.com', 'password123').",
                         },
                     },
                     required: ["selector", "text"],
