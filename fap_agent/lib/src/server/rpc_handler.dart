@@ -11,35 +11,52 @@ import '../utils/screenshot.dart';
 
 import '../../fap_agent.dart';
 
+import '../core/recorder.dart';
+
 abstract class FapRpcHandler {
-  void registerMethods(json_rpc.Server server);
+  void registerMethods(json_rpc.Peer peer);
 }
 
 class FapRpcHandlerImpl implements FapRpcHandler {
   final FapAgent agent;
-  final SemanticsIndexer _indexer = SemanticsIndexer();
+  final SemanticsIndexer _indexer;
+  final Recorder _recorder;
   final ActionExecutor _executor = ActionExecutor();
   final ErrorMonitor _errorMonitor = ErrorMonitor();
   final ScreenshotUtils _screenshotUtils = ScreenshotUtils();
 
-  FapRpcHandlerImpl({required this.agent}) {
+  FapRpcHandlerImpl({
+    required this.agent,
+    required SemanticsIndexer indexer,
+    required Recorder recorder,
+  }) : _indexer = indexer, _recorder = recorder {
     _errorMonitor.start();
   }
 
   @override
-  void registerMethods(json_rpc.Server server) {
-    server.registerMethod('ping', () => 'pong');
+  void registerMethods(json_rpc.Peer peer) {
+    peer.registerMethod('ping', () => 'pong');
+
+    peer.registerMethod('startRecording', (json_rpc.Parameters params) {
+      _recorder.start();
+      return {'status': 'recording_started'};
+    });
+
+    peer.registerMethod('stopRecording', (json_rpc.Parameters params) {
+      _recorder.stop();
+      return {'status': 'recording_stopped'};
+    });
     
-    server.registerMethod('getTree', ([json_rpc.Parameters? params]) {
+    peer.registerMethod('getTree', ([json_rpc.Parameters? params]) {
       _indexer.reindex();
       return _indexer.elements.values.map((e) => e.toJson()).toList();
     });
 
-    server.registerMethod('getRoute', ([json_rpc.Parameters? params]) {
+    peer.registerMethod('getRoute', ([json_rpc.Parameters? params]) {
       return agent.navigatorObserver.currentRoute;
     });
 
-    server.registerMethod('tap', (json_rpc.Parameters params) async {
+    peer.registerMethod('tap', (json_rpc.Parameters params) async {
       final selectorString = params['selector'].asString;
       final selector = Selector.parse(selectorString);
       
@@ -62,7 +79,7 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       };
     });
 
-    server.registerMethod('enterText', (json_rpc.Parameters params) async {
+    peer.registerMethod('enterText', (json_rpc.Parameters params) async {
       final text = params['text'].asString;
       String? selectorString;
       try {
@@ -89,7 +106,7 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return {'status': 'text_entered', 'text': text};
     });
 
-    server.registerMethod('setText', (json_rpc.Parameters params) async {
+    peer.registerMethod('setText', (json_rpc.Parameters params) async {
       final text = params['text'].asString;
       final selectorString = params['selector'].asString;
       
@@ -105,7 +122,7 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return {'status': 'text_set', 'text': text};
     });
 
-    server.registerMethod('setSelection', (json_rpc.Parameters params) async {
+    peer.registerMethod('setSelection', (json_rpc.Parameters params) async {
       final selectorString = params['selector'].asString;
       final base = params['base'].asInt;
       final extent = params['extent'].asInt;
@@ -122,21 +139,21 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return {'status': 'selection_set', 'base': base, 'extent': extent};
     });
 
-    server.registerMethod('getErrors', (json_rpc.Parameters params) {
+    peer.registerMethod('getErrors', (json_rpc.Parameters params) {
       final frameworkErrors = _errorMonitor.getErrors().map((e) => e.toJson()).toList();
       final asyncErrors = agent.getErrors().map((e) => {'message': e, 'type': 'async'}).toList();
       return [...frameworkErrors, ...asyncErrors];
     });
 
-    server.registerMethod('getPerformanceMetrics', (json_rpc.Parameters params) {
+    peer.registerMethod('getPerformanceMetrics', (json_rpc.Parameters params) {
       return agent.getPerformanceMetrics();
     });
 
-    server.registerMethod('getLogs', (json_rpc.Parameters params) {
+    peer.registerMethod('getLogs', (json_rpc.Parameters params) {
       return agent.getLogs();
     });
 
-    server.registerMethod('captureScreenshot', (json_rpc.Parameters params) async {
+    peer.registerMethod('captureScreenshot', (json_rpc.Parameters params) async {
       final bytes = await _screenshotUtils.capture();
       if (bytes == null) {
         throw json_rpc.RpcException(101, 'Screenshot failed');
@@ -144,7 +161,7 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return {'base64': base64Encode(bytes)};
     });
 
-    server.registerMethod('scroll', (json_rpc.Parameters params) async {
+    peer.registerMethod('scroll', (json_rpc.Parameters params) async {
       final selectorString = params['selector'].asString;
       final dx = params['dx'].asNum.toDouble();
       final dy = params['dy'].asNum.toDouble();
@@ -161,7 +178,7 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return await _executor.scroll(element.globalRect, dx, dy, duration: Duration(milliseconds: durationMs));
     });
 
-    server.registerMethod('drag', (json_rpc.Parameters params) async {
+    peer.registerMethod('drag', (json_rpc.Parameters params) async {
       final selectorString = params['selector'].asString;
       final targetSelectorString = params['targetSelector'].asStringOr('');
       final dx = params['dx'].asNumOr(0).toDouble();
@@ -195,7 +212,7 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return await _executor.drag(start, end, duration: Duration(milliseconds: durationMs));
     });
 
-    server.registerMethod('longPress', (json_rpc.Parameters params) async {
+    peer.registerMethod('longPress', (json_rpc.Parameters params) async {
       final selectorString = params['selector'].asString;
       final durationMs = params['durationMs'].asIntOr(800);
 
@@ -210,7 +227,7 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return await _executor.longPress(element.globalRect, duration: Duration(milliseconds: durationMs));
     });
 
-    server.registerMethod('doubleTap', (json_rpc.Parameters params) async {
+    peer.registerMethod('doubleTap', (json_rpc.Parameters params) async {
       final selectorString = params['selector'].asString;
 
       final elements = _indexer.find(Selector.parse(selectorString));

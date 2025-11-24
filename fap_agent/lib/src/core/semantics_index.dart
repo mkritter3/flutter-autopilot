@@ -394,4 +394,40 @@ class SemanticsIndexer {
       
       return true;
   }
+
+  FapElement? hitTest(Offset point) {
+    // Iterate in reverse order (top-most first usually, though semantics order isn't strictly z-order)
+    // Actually, semantics traversal is usually paint order.
+    // We want the deepest child that contains the point.
+    // Since we flatten the tree into _elements, we don't have hierarchy easily accessible for hit testing 
+    // without re-traversing or keeping parent links.
+    // However, smaller elements usually sit on top of larger ones.
+    
+    FapElement? bestMatch;
+    double bestArea = double.infinity;
+    // Heuristic score: lower is better
+    double bestScore = double.infinity;
+
+    for (final element in _elements.values) {
+      if (element.globalRect.contains(point) && element.isInteractable) {
+        final area = element.globalRect.width * element.globalRect.height;
+        
+        // Base score is area
+        double score = area;
+
+        // Penalty for containers (elements with children usually)
+        // We don't have child count here easily, but we can check if it has a tap action.
+        // Bonus for having a tap action (makes score smaller)
+        if (element.node.getSemanticsData().hasAction(SemanticsAction.tap)) {
+          score *= 0.5; // Prioritize tappable elements significantly
+        }
+
+        if (score < bestScore) {
+          bestScore = score;
+          bestMatch = element;
+        }
+      }
+    }
+    return bestMatch;
+  }
 }

@@ -23,6 +23,8 @@ export class FapClient {
     private url: string;
     private config: FapConfig;
 
+    private eventListeners: ((event: any) => void)[] = [];
+
     constructor(config: FapConfig = {}) {
         this.config = config;
         this.url = config.url || 'ws://localhost:9001';
@@ -49,6 +51,14 @@ export class FapClient {
 
             this.ws.on('message', (data) => {
                 const msg = JSON.parse(data.toString());
+
+                // Handle Notifications
+                if (msg.method && !msg.id) {
+                    this.eventListeners.forEach(listener => listener(msg));
+                    return;
+                }
+
+                // Handle Responses
                 if (msg.id && this.pendingRequests.has(msg.id)) {
                     const { resolve, reject } = this.pendingRequests.get(msg.id)!;
                     this.pendingRequests.delete(msg.id);
@@ -60,6 +70,10 @@ export class FapClient {
                 }
             });
         });
+    }
+
+    onEvent(callback: (event: any) => void) {
+        this.eventListeners.push(callback);
     }
 
     async disconnect(): Promise<void> {
@@ -97,6 +111,14 @@ export class FapClient {
                 }
             }, this.config.timeoutMs || 10000);
         });
+    }
+
+    async startRecording(): Promise<void> {
+        await this.request('startRecording');
+    }
+
+    async stopRecording(): Promise<void> {
+        await this.request('stopRecording');
     }
 
     async getTree(): Promise<FapElement[]> {

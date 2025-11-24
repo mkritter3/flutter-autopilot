@@ -10,6 +10,8 @@ import 'src/server/rpc_handler.dart';
 import 'src/server/ws_server.dart';
 
 import 'src/widgets/fap_navigator_observer.dart';
+import 'src/core/semantics_index.dart';
+import 'src/core/recorder.dart';
 
 export 'src/widgets/fap_meta.dart';
 export 'src/widgets/fap_navigator_observer.dart';
@@ -33,12 +35,18 @@ class FapConfig {
   });
 }
 
+
+
 class FapAgent {
   static FapAgent? _instance;
   final FapConfig config;
   FapServer? _server;
   SemanticsHandle? _semanticsHandle;
   final FapNavigatorObserver navigatorObserver = FapNavigatorObserver();
+  
+  // Core Components
+  final SemanticsIndexer _indexer = SemanticsIndexer();
+  late final Recorder _recorder;
 
   // Observability Data
   late final ListQueue<FrameTiming> _frameTimings;
@@ -46,6 +54,7 @@ class FapAgent {
   late final ListQueue<String> _errors;
 
   FapAgent._(this.config) {
+    _recorder = Recorder(_indexer);
     _frameTimings = ListQueue<FrameTiming>(config.maxFrameTimings);
     _logs = ListQueue<String>(config.maxLogs);
     _errors = ListQueue<String>(config.maxErrors);
@@ -97,12 +106,23 @@ class FapAgent {
   Future<void> _start() async {
     if (!config.enabled) return;
     
-    final rpcHandler = FapRpcHandlerImpl(agent: this);
+    final rpcHandler = FapRpcHandlerImpl(
+      agent: this,
+      indexer: _indexer,
+      recorder: _recorder,
+    );
+    
     _server = FapServer(
       port: config.port, 
       rpcHandler: rpcHandler,
       secretToken: config.secretToken,
     );
+
+    // Wire up Recorder events
+    _recorder.events.listen((event) {
+      _server?.broadcastNotification('recording.event', event);
+    });
+
     await _server!.start();
   }
 

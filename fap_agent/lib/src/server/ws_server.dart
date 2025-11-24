@@ -11,7 +11,7 @@ class FapServer {
   final FapRpcHandler rpcHandler;
   final String? secretToken;
   HttpServer? _server;
-  final List<WebSocket> _sockets = [];
+  final List<json_rpc.Peer> _peers = [];
 
   FapServer({
     required this.port,
@@ -57,32 +57,40 @@ class FapServer {
   }
 
   Future<void> stop() async {
-    for (final socket in _sockets) {
-      socket.close();
+    for (final peer in _peers) {
+      await peer.close();
     }
     await _server?.close();
     _server = null;
   }
 
+  void broadcastNotification(String method, dynamic params) {
+    for (final peer in _peers) {
+      if (!peer.isClosed) {
+        peer.sendNotification(method, params);
+      }
+    }
+  }
+
   void _handleWebSocket(WebSocket socket) {
-    _sockets.add(socket);
     print('FAP Client connected');
 
     // Create a StreamChannel from the WebSocket
     final channel = StreamChannel(socket, socket).cast<String>();
     
-    // Create a JSON-RPC Server
-    final server = json_rpc.Server(channel);
+    // Create a JSON-RPC Peer (supports bidirectional)
+    final peer = json_rpc.Peer(channel);
+    _peers.add(peer);
     
     // Register methods
-    rpcHandler.registerMethods(server);
+    rpcHandler.registerMethods(peer);
     
     // Listen
-    server.listen().then((_) {
-      _sockets.remove(socket);
+    peer.listen().then((_) {
+      _peers.remove(peer);
       print('FAP Client disconnected');
     }).catchError((error) {
-      _sockets.remove(socket);
+      _peers.remove(peer);
       print('FAP Client error: $error');
     });
   }
