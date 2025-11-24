@@ -1,5 +1,6 @@
 import WebSocket from 'ws';
 import { v4 as uuidv4 } from 'uuid';
+import * as zlib from 'zlib';
 
 export interface FapConfig {
     url?: string;
@@ -111,6 +112,14 @@ export class FapClient {
                     reject(new Error(`Request ${method} timed out`));
                 }
             }, this.config.timeoutMs || 10000);
+        }).then((result: any) => {
+            // Handle Compression
+            if (result && typeof result === 'object' && result.compressed && result.data) {
+                const buffer = Buffer.from(result.data, 'base64');
+                const decompressed = zlib.gunzipSync(buffer);
+                return JSON.parse(decompressed.toString('utf-8'));
+            }
+            return result;
         });
     }
 

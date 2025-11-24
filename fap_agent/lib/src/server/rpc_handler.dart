@@ -49,17 +49,20 @@ class FapRpcHandlerImpl implements FapRpcHandler {
     
     peer.registerMethod('getTree', ([json_rpc.Parameters? params]) {
       _indexer.reindex();
-      return _indexer.elements.values.map((e) => e.toJson()).toList();
+      final data = _indexer.elements.values.map((e) => e.toJson()).toList();
+      return _compressIfNeeded(data);
     });
 
     peer.registerMethod('getTreeDiff', ([json_rpc.Parameters? params]) {
       _indexer.reindex();
-      return _indexer.computeDiff();
+      final data = _indexer.computeDiff();
+      return _compressIfNeeded(data);
     });
 
     peer.registerMethod('getRoute', ([json_rpc.Parameters? params]) {
       return agent.navigatorObserver.currentRoute;
     });
+
 
     peer.registerMethod('tap', (json_rpc.Parameters params) async {
       final selectorString = params['selector'].asString;
@@ -245,5 +248,22 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       
       return await _executor.doubleTap(element.globalRect);
     });
+  }
+
+  dynamic _compressIfNeeded(Object data) {
+    final jsonString = jsonEncode(data);
+    final bytes = utf8.encode(jsonString);
+    
+    // Compress if larger than 1KB
+    if (bytes.length > 1024) {
+      final compressed = GZipCodec().encode(bytes);
+      final base64 = base64Encode(compressed);
+      return {
+        'compressed': true,
+        'data': base64,
+      };
+    }
+    
+    return data;
   }
 }

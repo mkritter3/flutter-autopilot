@@ -193,6 +193,23 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     required: ["selector", "base", "extent"],
                 },
             },
+
+            {
+                name: "start_recording",
+                description: "Start recording user interactions (taps, text entry) to generate a FAP script.",
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "stop_recording",
+                description: "Stop the recording session.",
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
         ],
     };
 });
@@ -342,6 +359,21 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 await fap.setSelection(selector, base, extent);
                 return {
                     content: [{ type: "text", text: `Selection set: ${base}-${extent}` }],
+                };
+
+            }
+
+            case "start_recording": {
+                await fap.startRecording();
+                return {
+                    content: [{ type: "text", text: "Recording started" }],
+                };
+            }
+
+            case "stop_recording": {
+                await fap.stopRecording();
+                return {
+                    content: [{ type: "text", text: "Recording stopped" }],
                 };
             }
 
