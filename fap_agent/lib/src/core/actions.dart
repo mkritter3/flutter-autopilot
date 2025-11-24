@@ -47,6 +47,37 @@ class ActionExecutor {
     return {'status': 'tapped', 'center': {'x': center.dx, 'y': center.dy}};
   }
 
+  Future<Map<String, dynamic>> tapAt(Offset position) async {
+    final pointer = _nextPointerId();
+    print('ActionExecutor.tapAt: $position');
+
+    // Hover
+    _dispatchPointerEvent(PointerHoverEvent(
+      position: position,
+      kind: PointerDeviceKind.mouse,
+    ));
+    await Future.delayed(const Duration(milliseconds: 50));
+
+    // Down
+    _dispatchPointerEvent(PointerDownEvent(
+      position: position,
+      pointer: pointer,
+      kind: PointerDeviceKind.mouse,
+      buttons: kPrimaryMouseButton,
+    ));
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    // Up
+    _dispatchPointerEvent(PointerUpEvent(
+      position: position,
+      pointer: pointer,
+      kind: PointerDeviceKind.mouse,
+      buttons: 0,
+    ));
+
+    return {'status': 'tapped_at', 'x': position.dx, 'y': position.dy};
+  }
+
   Future<Map<String, dynamic>> doubleTap(Rect globalRect) async {
     final center = globalRect.center;
     print('ActionExecutor.doubleTap: $center');

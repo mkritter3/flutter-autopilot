@@ -59,6 +59,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 },
             },
             {
+                name: "tap_at",
+                description: "Tap at a specific screen coordinate (x, y). Use this when you can see an element in the screenshot but cannot find it in the element tree.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        x: { type: "number", description: "X coordinate" },
+                        y: { type: "number", description: "Y coordinate" },
+                    },
+                    required: ["x", "y"],
+                },
+            },
+            {
                 name: "enter_text",
                 description: "Enter text into a text field matching the given selector.",
                 inputSchema: {
@@ -242,6 +254,19 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         {
                             type: "text",
                             text: `Tapped element: ${JSON.stringify(result)}`,
+                        },
+                    ],
+                };
+            }
+
+            case "tap_at": {
+                const { x, y } = request.params.arguments as { x: number; y: number };
+                const result = await fap.tapAt(x, y);
+                return {
+                    content: [
+                        {
+                            type: "text",
+                            text: `Tapped at (${x}, ${y}): ${JSON.stringify(result)}`,
                         },
                     ],
                 };

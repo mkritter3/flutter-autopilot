@@ -196,6 +196,10 @@ export class FapClient {
         return this.request('tap', { selector });
     }
 
+    async tapAt(x: number, y: number): Promise<any> {
+        return this.request('tapAt', { x, y });
+    }
+
     async enterText(text: string, selector?: string): Promise<void> {
         await this.request('enterText', { text, selector });
     }

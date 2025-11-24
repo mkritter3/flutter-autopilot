@@ -87,6 +87,13 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       };
     });
 
+    peer.registerMethod('tapAt', (json_rpc.Parameters params) async {
+      final x = params['x'].asNum.toDouble();
+      final y = params['y'].asNum.toDouble();
+      
+      return await _executor.tapAt(Offset(x, y));
+    });
+
     peer.registerMethod('enterText', (json_rpc.Parameters params) async {
       final text = params['text'].asString;
       String? selectorString;
