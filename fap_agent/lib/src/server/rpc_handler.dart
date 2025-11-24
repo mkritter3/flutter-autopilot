@@ -14,6 +14,7 @@ import '../../fap_agent.dart';
 import '../core/recorder.dart';
 
 abstract class FapRpcHandler {
+  FapAgent get agent;
   void registerMethods(json_rpc.Peer peer);
 }
 

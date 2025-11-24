@@ -109,6 +109,9 @@ class FapServer {
   void _handleWebSocket(WebSocket socket) {
     print('FAP Client connected');
 
+    // Notify agent of connection (enables Semantics on first client)
+    rpcHandler.agent.onClientConnected();
+
     // Create a StreamChannel from the WebSocket
     final channel = StreamChannel(socket, socket).cast<String>();
 
@@ -125,10 +128,14 @@ class FapServer {
         .then((_) {
           _peers.remove(peer);
           print('FAP Client disconnected');
+          // Notify agent of disconnection (disables Semantics when last client leaves)
+          rpcHandler.agent.onClientDisconnected();
         })
         .catchError((error) {
           _peers.remove(peer);
           print('FAP Client error: $error');
+          // Notify agent of disconnection even on error
+          rpcHandler.agent.onClientDisconnected();
         });
   }
 }

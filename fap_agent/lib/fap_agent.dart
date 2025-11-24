@@ -45,6 +45,9 @@ class FapAgent {
   SemanticsHandle? _semanticsHandle;
   final FapNavigatorObserver navigatorObserver = FapNavigatorObserver();
 
+  // Connection tracking for lazy Semantics activation
+  int _clientCount = 0;
+
   // Core Components
   final SemanticsIndexer _indexer = SemanticsIndexer();
   late final Recorder _recorder;
@@ -68,12 +71,10 @@ class FapAgent {
     if (_instance != null) return;
     _instance = FapAgent._(config);
 
-    // Ensure semantics are enabled
+    // DON'T enable semantics yet - wait for client connection
+    // This prevents FAP from interfering with native platform views (e.g., Plaid)
     WidgetsFlutterBinding.ensureInitialized();
-    _instance!._semanticsHandle = SemanticsBinding.instance.ensureSemantics();
-    print(
-      'FapAgent: Semantics enabled. Handle: ${_instance!._semanticsHandle}',
-    );
+    print('FapAgent: Initialized (Semantics will activate on client connection)');
 
     _instance!._setupObservability();
     await _instance!._start();
@@ -129,6 +130,25 @@ class FapAgent {
     });
 
     await _server!.start();
+  }
+
+  /// Called when a client connects - enables Semantics on first connection
+  void onClientConnected() {
+    _clientCount++;
+    if (_clientCount == 1 && _semanticsHandle == null) {
+      _semanticsHandle = SemanticsBinding.instance.ensureSemantics();
+      print('FapAgent: Semantics enabled (client connected)');
+    }
+  }
+
+  /// Called when a client disconnects - disables Semantics when last client leaves
+  void onClientDisconnected() {
+    _clientCount--;
+    if (_clientCount == 0 && _semanticsHandle != null) {
+      _semanticsHandle!.dispose();
+      _semanticsHandle = null;
+      print('FapAgent: Semantics disabled (no clients connected)');
+    }
   }
 
   static Future<void> stop() async {
