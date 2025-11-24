@@ -59,3 +59,6 @@ To use this with Claude Desktop, add the following to your `claude_desktop_confi
 *   `get_logs`: Retrieve app logs.
 *   `get_errors`: Retrieve captured errors.
 *   `get_performance_metrics`: Retrieve frame timing metrics.
+*   `start_recording`: Start recording user interactions.
+*   `stop_recording`: Stop recording.
+*   `tap_at(x, y)`: Tap at specific screen coordinates (Visual Grounding).
