@@ -274,7 +274,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 
             case "enter_text": {
                 const { selector, text } = request.params.arguments as { selector: string; text: string };
-                const result = await fap.enterText(selector, text);
+                const result = await fap.enterText(text, selector);
                 return {
                     content: [
                         {
