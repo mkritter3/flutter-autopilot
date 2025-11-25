@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import * as zlib from 'zlib';
+import fs from 'fs';
 
 export interface FapConfig {
     url?: string;
@@ -16,6 +17,14 @@ export interface FapElement {
     hint?: string;
     key?: string;
     metadata?: Record<string, string>;
+}
+
+export interface FapWidgetRef {
+    id: string;
+    type: string;
+    key?: string;
+    bounds: { x: number; y: number; w: number; h: number };
+    properties: Record<string, any>;
 }
 
 export class FapClient {
@@ -117,7 +126,8 @@ export class FapClient {
             if (result && typeof result === 'object' && result.compressed && result.data) {
                 const buffer = Buffer.from(result.data, 'base64');
                 const decompressed = zlib.gunzipSync(buffer);
-                return JSON.parse(decompressed.toString('utf-8'));
+                const parsed = JSON.parse(decompressed.toString('utf-8'));
+                return parsed;
             }
             return result;
         });
@@ -132,31 +142,49 @@ export class FapClient {
     }
 
     async getTree(): Promise<FapElement[]> {
-        try {
-            const diff = await this.request<any>('getTreeDiff');
-            this._applyDiff(diff);
-            return Array.from(this._elementsCache.values());
-        } catch (e) {
-            // Fallback to full tree if diff fails (e.g. old agent)
-            const response = await this.request<any>('getTree');
+        const response: any = await this.request('getTree');
 
-            // Handle new response format with cache metadata
-            let elements: FapElement[];
-            if (response && typeof response === 'object' && response.elements) {
-                // New format with metadata
-                elements = response.elements;
-                if (response.cached) {
-                    console.log(`ℹ️  FAP: Received cached UI tree (age: ${response.cacheAgeSeconds}s)`);
-                }
-            } else {
-                // Old format (backward compatibility)
-                elements = response as FapElement[];
-            }
-
-            this._elementsCache.clear();
-            elements.forEach(e => this._elementsCache.set(e.id.toString(), e));
-            return elements;
+        let elements: FapElement[] = [];
+        if (Array.isArray(response)) {
+            elements = response;
+        } else if (response && response.elements && Array.isArray(response.elements)) {
+            elements = response.elements;
+        } else {
+            console.error('Unexpected getTree response format:', response);
+            return [];
         }
+
+        this._elementsCache.clear();
+        elements.forEach(e => this._elementsCache.set(e.id.toString(), e));
+        return elements;
+    }
+
+    // Widget Inspector Methods (NEW)
+    async getWidgetTree(): Promise<FapWidgetRef[]> {
+        const response: any = await this.request('getWidgetTree');
+
+        if (response && response.widgets && Array.isArray(response.widgets)) {
+            return response.widgets;
+        }
+        return [];
+    }
+
+    async findWidget(filter: { type?: string; key?: string; x?: number; y?: number }): Promise<FapWidgetRef[]> {
+        const response: any = await this.request('findWidget', filter);
+        return Array.isArray(response) ? response : [];
+    }
+
+    async findWidgetByType(typeName: string): Promise<FapWidgetRef[]> {
+        return this.findWidget({ type: typeName });
+    }
+
+    async findWidgetByKey(keyPattern: string): Promise<FapWidgetRef[]> {
+        return this.findWidget({ key: keyPattern });
+    }
+
+    async findWidgetAt(x: number, y: number): Promise<FapWidgetRef | null> {
+        const widgets = await this.findWidget({ x, y });
+        return widgets.length > 0 ? widgets[0] : null;
     }
 
     private _applyDiff(diff: { added: FapElement[], removed: string[], updated: FapElement[] }) {

@@ -13,9 +13,11 @@ import 'src/server/ws_server.dart';
 import 'src/widgets/fap_navigator_observer.dart';
 import 'src/core/semantics_index.dart';
 import 'src/core/recorder.dart';
+import 'src/core/widget_inspector_bridge.dart';
 
 export 'src/widgets/fap_meta.dart';
 export 'src/widgets/fap_navigator_observer.dart';
+export 'src/core/widget_inspector_bridge.dart';
 
 class FapConfig {
   final int port;
@@ -143,6 +145,10 @@ class FapAgent {
       // Without this, the tree may remain empty even after ensureSemantics()
       SchedulerBinding.instance.scheduleFrame();
       print('FapAgent: Frame rebuild scheduled');
+
+      // Initialize Widget Inspector for advanced widget targeting
+      WidgetInspectorBridge.instance.initialize();
+      print('FAP Widget Inspector: Enabled');
     }
   }
 

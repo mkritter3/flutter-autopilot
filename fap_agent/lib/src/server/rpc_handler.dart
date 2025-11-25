@@ -12,6 +12,7 @@ import '../utils/screenshot.dart';
 import '../../fap_agent.dart';
 
 import '../core/recorder.dart';
+import '../core/widget_inspector_bridge.dart';
 
 abstract class FapRpcHandler {
   FapAgent get agent;
@@ -332,6 +333,43 @@ class FapRpcHandlerImpl implements FapRpcHandler {
         element.globalRect,
         semanticsNode: element.node,
       );
+    });
+
+    // Widget Inspector RPC Methods
+    peer.registerMethod('getWidgetTree', ([json_rpc.Parameters? params]) async {
+      try {
+        final inspector = WidgetInspectorBridge.instance;
+        final widgets = await inspector.getWidgetTree();
+        final data = widgets.map((w) => w.toJson()).toList();
+        return _compressIfNeeded({'widgets': data, 'count': widgets.length});
+      } catch (e) {
+        throw json_rpc.RpcException(300, 'Widget inspector error: $e');
+      }
+    });
+
+    peer.registerMethod('findWidget', (json_rpc.Parameters params) async {
+      try {
+        final inspector = WidgetInspectorBridge.instance;
+        List<FapWidgetRef> widgets = [];
+        
+        // Support multiple search modes
+        if (params.asMap.containsKey('type')) {
+          final typeName = params['type'].asString;
+          widgets = await inspector.findByType(typeName);
+        } else if (params.asMap.containsKey('key')) {
+          final keyPattern = params['key'].asString;
+          widgets = await inspector.findByKey(keyPattern);
+        } else if (params.asMap.containsKey('x') && params.asMap.containsKey('y')) {
+          final x = params['x'].asNum.toDouble();
+          final y = params['y'].asNum.toDouble();
+          final widget = await inspector.findByCoordinates(Offset(x, y));
+          if (widget != null) widgets = [widget];
+        }
+        
+        return widgets.map((w) => w.toJson()).toList();
+      } catch (e) {
+        throw json_rpc.RpcException(300, 'Widget search error: $e');
+      }
     });
   }
 
