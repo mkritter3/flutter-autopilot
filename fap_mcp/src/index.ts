@@ -14,6 +14,15 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { FapClient } from "fap-client";
 
+// Development tools for autonomous testing
+import {
+    vmService,
+    fileOps,
+    codeAnalysis,
+    testRunner,
+    setProjectRoot,
+} from "./dev-tools.js";
+
 interface ConfigFile {
     agentUrl?: string;
     agentHost?: string;
@@ -425,6 +434,179 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     properties: {},
                 },
             },
+
+            // === Development Tools ===
+
+            {
+                name: "set_project_root",
+                description: "Set the Flutter project directory for file operations, code analysis, and test execution. Must be called before using other dev tools.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        path: {
+                            type: "string",
+                            description: "Absolute path to the Flutter project root directory.",
+                        },
+                    },
+                    required: ["path"],
+                },
+            },
+            {
+                name: "set_vm_service_uri",
+                description: "Set the Flutter VM Service URI for hot reload. Get this from the flutter run output (e.g., 'http://127.0.0.1:XXXXX/XXXXX=/ws').",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        uri: {
+                            type: "string",
+                            description: "The VM Service URI from flutter run output.",
+                        },
+                    },
+                    required: ["uri"],
+                },
+            },
+            {
+                name: "hot_reload",
+                description: "Trigger a hot reload to apply code changes without losing app state. Requires set_vm_service_uri to be called first.",
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "hot_restart",
+                description: "Trigger a hot restart to fully restart the app with new code. Requires set_vm_service_uri to be called first.",
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "read_file",
+                description: "Read the contents of a file in the project.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        path: {
+                            type: "string",
+                            description: "File path relative to project root, or absolute path.",
+                        },
+                    },
+                    required: ["path"],
+                },
+            },
+            {
+                name: "write_file",
+                description: "Write content to a file in the project. Creates directories as needed.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        path: {
+                            type: "string",
+                            description: "File path relative to project root, or absolute path.",
+                        },
+                        content: {
+                            type: "string",
+                            description: "The content to write to the file.",
+                        },
+                    },
+                    required: ["path", "content"],
+                },
+            },
+            {
+                name: "search_code",
+                description: "Search for code patterns in the project using grep.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        pattern: {
+                            type: "string",
+                            description: "The pattern to search for (supports regex).",
+                        },
+                        filePattern: {
+                            type: "string",
+                            description: "File pattern to search in (default: *.dart). Examples: *.dart, *.yaml, *.json",
+                        },
+                    },
+                    required: ["pattern"],
+                },
+            },
+            {
+                name: "list_files",
+                description: "List files in a directory, optionally filtered by pattern.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        path: {
+                            type: "string",
+                            description: "Directory path relative to project root (default: '.').",
+                        },
+                        pattern: {
+                            type: "string",
+                            description: "Filter files by pattern (e.g., '.dart', 'test').",
+                        },
+                    },
+                },
+            },
+            {
+                name: "analyze_code",
+                description: "Run dart analyze to find code issues (warnings, errors, hints).",
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "apply_fixes",
+                description: "Run dart fix to automatically fix code issues.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        dryRun: {
+                            type: "boolean",
+                            description: "If true, show what would be fixed without applying changes.",
+                        },
+                    },
+                },
+            },
+            {
+                name: "format_code",
+                description: "Run dart format to format code files.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        path: {
+                            type: "string",
+                            description: "File or directory to format (default: entire project).",
+                        },
+                    },
+                },
+            },
+            {
+                name: "run_tests",
+                description: "Run Flutter tests.",
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        path: {
+                            type: "string",
+                            description: "Specific test file or directory to run (optional).",
+                        },
+                        reporter: {
+                            type: "string",
+                            description: "Test reporter: 'compact', 'expanded', 'json' (default: compact).",
+                        },
+                    },
+                },
+            },
+            {
+                name: "get_vm_info",
+                description: "Get information about the Flutter VM (isolates, version, etc.).",
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
         ],
     };
 });
@@ -607,6 +789,161 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 await fap.stopRecording();
                 return {
                     content: [{ type: "text", text: "Recording stopped" }],
+                };
+            }
+
+            // === Development Tools ===
+
+            case "set_project_root": {
+                const { path: projectPath } = request.params.arguments as { path: string };
+                setProjectRoot(projectPath);
+                return {
+                    content: [{ type: "text", text: `Project root set to: ${projectPath}` }],
+                };
+            }
+
+            case "set_vm_service_uri": {
+                const { uri } = request.params.arguments as { uri: string };
+                vmService.setUri(uri);
+                return {
+                    content: [{ type: "text", text: `VM Service URI set to: ${uri}` }],
+                };
+            }
+
+            case "hot_reload": {
+                const result = await vmService.hotReload();
+                return {
+                    content: [{ type: "text", text: result.message }],
+                    isError: !result.success,
+                };
+            }
+
+            case "hot_restart": {
+                const result = await vmService.hotRestart();
+                return {
+                    content: [{ type: "text", text: result.message }],
+                    isError: !result.success,
+                };
+            }
+
+            case "read_file": {
+                const { path: filePath } = request.params.arguments as { path: string };
+                const result = fileOps.readFile(filePath);
+                if (!result.success) {
+                    return {
+                        content: [{ type: "text", text: `Error: ${result.error}` }],
+                        isError: true,
+                    };
+                }
+                return {
+                    content: [{ type: "text", text: result.content! }],
+                };
+            }
+
+            case "write_file": {
+                const { path: filePath, content } = request.params.arguments as { path: string; content: string };
+                const result = fileOps.writeFile(filePath, content);
+                if (!result.success) {
+                    return {
+                        content: [{ type: "text", text: `Error: ${result.error}` }],
+                        isError: true,
+                    };
+                }
+                return {
+                    content: [{ type: "text", text: `File written: ${filePath}` }],
+                };
+            }
+
+            case "search_code": {
+                const { pattern, filePattern } = request.params.arguments as { pattern: string; filePattern?: string };
+                const result = fileOps.searchCode(pattern, filePattern);
+                if (!result.success) {
+                    return {
+                        content: [{ type: "text", text: `Error: ${result.error}` }],
+                        isError: true,
+                    };
+                }
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result.matches, null, 2) }],
+                };
+            }
+
+            case "list_files": {
+                const { path: dirPath, pattern } = request.params.arguments as { path?: string; pattern?: string };
+                const result = fileOps.listFiles(dirPath, pattern);
+                if (!result.success) {
+                    return {
+                        content: [{ type: "text", text: `Error: ${result.error}` }],
+                        isError: true,
+                    };
+                }
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result.files, null, 2) }],
+                };
+            }
+
+            case "analyze_code": {
+                const result = codeAnalysis.analyze();
+                if (!result.success) {
+                    return {
+                        content: [{ type: "text", text: `Error: ${result.error}` }],
+                        isError: true,
+                    };
+                }
+                const summary = `Found ${result.issues!.length} issues`;
+                return {
+                    content: [{ type: "text", text: `${summary}\n\n${JSON.stringify(result.issues, null, 2)}` }],
+                };
+            }
+
+            case "apply_fixes": {
+                const { dryRun } = request.params.arguments as { dryRun?: boolean };
+                const result = codeAnalysis.applyFixes(dryRun ?? false);
+                if (!result.success) {
+                    return {
+                        content: [{ type: "text", text: `Error: ${result.error}` }],
+                        isError: true,
+                    };
+                }
+                return {
+                    content: [{ type: "text", text: result.output! }],
+                };
+            }
+
+            case "format_code": {
+                const { path: formatPath } = request.params.arguments as { path?: string };
+                const result = codeAnalysis.formatCode(formatPath);
+                if (!result.success) {
+                    return {
+                        content: [{ type: "text", text: `Error: ${result.error}` }],
+                        isError: true,
+                    };
+                }
+                return {
+                    content: [{ type: "text", text: result.output! }],
+                };
+            }
+
+            case "run_tests": {
+                const { path: testPath, reporter } = request.params.arguments as { path?: string; reporter?: string };
+                const result = testRunner.runTests(testPath, reporter);
+                if (!result.success && result.error) {
+                    return {
+                        content: [{ type: "text", text: `Error: ${result.error}` }],
+                        isError: true,
+                    };
+                }
+                const summary = `Passed: ${result.passed ?? 0}, Failed: ${result.failed ?? 0}`;
+                return {
+                    content: [{ type: "text", text: `${summary}\n\n${result.output}` }],
+                    isError: !result.success,
+                };
+            }
+
+            case "get_vm_info": {
+                const info = await vmService.getVmInfo();
+                return {
+                    content: [{ type: "text", text: JSON.stringify(info, null, 2) }],
                 };
             }
 
