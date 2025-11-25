@@ -246,7 +246,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         tools: [
             {
                 name: "list_elements",
-                description: "Get a hierarchical list of all UI elements currently visible on the screen. Returns the Flutter semantics tree with element IDs, types, text, labels, keys, and other attributes. Use this FIRST to discover available selectors before attempting to tap or enter text. Note: Custom painters, WebViews, and some platform views may not appear in this tree - use tap_at with visual grounding for those.",
+                description: `Get a hierarchical list of all UI elements currently visible on the screen. Returns the Flutter semantics tree with element IDs, types, text, labels, keys, and coordinates.
+
+IMPORTANT - Coordinate System:
+- Coordinates returned are in DEVICE PIXELS (not logical points)
+- On iOS (iPhone): divide coordinates by 3 before using with tap_at
+- On Android/Desktop: coordinates are usually 1:1 with logical points
+
+Use this FIRST to:
+1. Discover available selectors (key, text, label, type) for tap/enter_text
+2. Get element coordinates for tap_at when selectors don't work
+3. Verify UI state after actions
+
+Limitations:
+- Custom painters, WebViews, and native platform views may not appear
+- Native iOS/Android views presented ON TOP of Flutter (e.g., Plaid SDK, in-app browsers) are NOT controllable via FAP - these run outside Flutter's widget tree
+- For elements not in the tree, use tap_at with visual grounding (screenshot analysis)`,
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -254,13 +269,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "tap",
-                description: "Tap on a UI element matching the given selector. Use this for buttons, links, list items, etc. If an element is not exposed in the semantics tree, use tap_at with coordinates instead.",
+                description: `Tap on a UI element matching the given selector. Use for buttons, links, list items, checkboxes, etc.
+
+Selector types (in order of reliability):
+1. key="submit_btn" - Flutter Key (BEST - stable across UI changes)
+2. text="Save" - Visible text content
+3. label="Submit form" - Accessibility label (semanticsLabel)
+4. type="ElevatedButton" - Widget type (least reliable)
+
+Tips:
+- Always call list_elements first to discover available selectors
+- If tap fails with "element not found", the selector may be wrong or element not in semantics tree
+- If element exists but tap doesn't work, try tap_at with coordinates instead
+- For native views (Plaid, WebViews), FAP cannot interact - they run outside Flutter`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         selector: {
                             type: "string",
-                            description: "The selector to identify the element. Examples: 'text=\"Save\"' (button text), 'key=\"submit_btn\"' (Flutter Key - best), 'type=\"ElevatedButton\"' (widget type), 'label=\"Submit form\"' (accessibility label). Use list_elements first to see available selectors.",
+                            description: "Selector to identify the element. Format: 'key=\"value\"', 'text=\"value\"', 'label=\"value\"', or 'type=\"value\"'. Use list_elements to discover available selectors.",
                         },
                     },
                     required: ["selector"],
@@ -268,29 +295,60 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "tap_at",
-                description: "Tap at specific screen coordinates (x, y). Use this for Visual Grounding workflows when: 1) An element is visible in the screenshot but not in the semantics tree (e.g., WebView content, custom painters, platform views), 2) You're using a VLM to identify element positions. Always analyze the screenshot first to determine coordinates.",
+                description: `Tap at specific screen coordinates (x, y) in LOGICAL POINTS.
+
+CRITICAL - Coordinate Scaling:
+- list_elements returns coordinates in DEVICE PIXELS
+- tap_at expects LOGICAL POINTS
+- iOS (iPhone): DIVIDE coordinates by 3 (device pixel ratio)
+- Android/Desktop: coordinates are usually 1:1
+
+Example workflow:
+1. list_elements shows button at rect: {left: 900, top: 1200, ...}
+2. Calculate center: x=900+(width/2), y=1200+(height/2)
+3. On iOS: divide by 3 → tap_at(x/3, y/3)
+
+When to use tap_at instead of tap:
+- Element coordinates known but selector doesn't work
+- Visual Grounding: using VLM/screenshot analysis to find elements
+- Elements not in semantics tree (custom painters, canvas)
+- Fallback when tap() fails
+
+Note: Cannot interact with native iOS/Android views (Plaid SDK, WebViews presented over Flutter)`,
                 inputSchema: {
                     type: "object",
                     properties: {
-                        x: { type: "number", description: "X coordinate in pixels from the left edge of the screen" },
-                        y: { type: "number", description: "Y coordinate in pixels from the top edge of the screen" },
+                        x: { type: "number", description: "X coordinate in logical points. On iOS: divide device pixel coordinate by 3" },
+                        y: { type: "number", description: "Y coordinate in logical points. On iOS: divide device pixel coordinate by 3" },
                     },
                     required: ["x", "y"],
                 },
             },
             {
                 name: "enter_text",
-                description: "Enter text into a text field matching the given selector. Use this to type into input fields, textareas, etc. The field must have focus (tap it first if needed).",
+                description: `Enter text into a text field by APPENDING to existing content. Simulates typing character by character.
+
+Important behavior:
+- This APPENDS text to existing field content (doesn't replace)
+- To replace text, use set_text instead
+- Field should have focus (tap it first if text doesn't appear)
+- Works with TextField, TextFormField, and similar widgets
+
+Tips:
+- Use list_elements to find the field's selector
+- Prefer key="field_name" selectors when available
+- If enter_text doesn't work, try: tap the field first, then enter_text
+- For obscured fields (passwords), text still enters normally`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         selector: {
                             type: "string",
-                            description: "The selector to identify the text field. Examples: 'key=\"email_field\"' (best - uses Flutter Key), 'text=\"Email\"' (label text), 'type=\"TextField\"' (widget type). Prefer key selectors when available.",
+                            description: "Selector to identify the text field. Prefer key selectors (e.g., 'key=\"email_field\"').",
                         },
                         text: {
                             type: "string",
-                            description: "The text to type into the field (e.g., 'user@example.com', 'password123').",
+                            description: "Text to type into the field. Will be appended to existing content.",
                         },
                     },
                     required: ["selector", "text"],
@@ -298,25 +356,37 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "scroll",
-                description: "Scroll a UI element.",
+                description: `Scroll a scrollable UI element (ListView, SingleChildScrollView, CustomScrollView, etc.).
+
+Scroll direction:
+- Positive dy: scroll DOWN (content moves up, reveals items below)
+- Negative dy: scroll UP (content moves down, reveals items above)
+- Positive dx: scroll RIGHT
+- Negative dx: scroll LEFT
+
+Tips:
+- Use list_elements to find the scrollable container's selector
+- Start with smaller values (100-300) and increase if needed
+- If element not found after scroll, it may not be in the current viewport yet
+- Very long lists may need multiple scrolls to reach distant items`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         selector: {
                             type: "string",
-                            description: "The selector to identify the scrollable element.",
+                            description: "Selector for the scrollable element (ListView, ScrollView, etc.).",
                         },
                         dx: {
                             type: "number",
-                            description: "Horizontal scroll amount.",
+                            description: "Horizontal scroll amount in logical pixels. Positive = right, negative = left.",
                         },
                         dy: {
                             type: "number",
-                            description: "Vertical scroll amount.",
+                            description: "Vertical scroll amount in logical pixels. Positive = down, negative = up.",
                         },
                         durationMs: {
                             type: "number",
-                            description: "Duration of scroll animation in milliseconds (default 300).",
+                            description: "Scroll animation duration in ms (default 300). Longer = smoother.",
                         },
                     },
                     required: ["selector", "dx", "dy"],
@@ -324,7 +394,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "get_route",
-                description: "Get the name of the current route.",
+                description: `Get the current Flutter route/screen name. Useful for verifying navigation worked.
+
+Returns the route name as configured in the app's routing (e.g., '/home', '/settings', 'LoginScreen').
+
+Use cases:
+- Verify navigation to expected screen after tap
+- Debug unexpected screen transitions
+- Confirm app state before performing actions`,
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -332,45 +409,73 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "drag",
-                description: "Drag an element to another element or by an offset.",
+                description: `Drag an element to another element or by a pixel offset. Use for sliders, reorderable lists, swipe-to-dismiss, etc.
+
+Two modes:
+1. targetSelector: Drag from one element TO another element
+2. dx/dy offset: Drag from element BY a pixel distance
+
+Use cases:
+- Adjust sliders (drag thumb by dx offset)
+- Reorder items in lists (drag to targetSelector)
+- Swipe-to-dismiss (drag with negative dx for left swipe)
+- Pull-to-refresh (drag with positive dy)`,
                 inputSchema: {
                     type: "object",
                     properties: {
-                        selector: { type: "string", description: "The element to drag." },
-                        targetSelector: { type: "string", description: "The element to drag to (optional)." },
-                        dx: { type: "number", description: "X offset to drag (optional, used if targetSelector not provided)." },
-                        dy: { type: "number", description: "Y offset to drag (optional, used if targetSelector not provided)." },
-                        durationMs: { type: "number", description: "Duration of drag in ms (default 300)." },
+                        selector: { type: "string", description: "Selector for the element to drag." },
+                        targetSelector: { type: "string", description: "Selector for destination element (mutually exclusive with dx/dy)." },
+                        dx: { type: "number", description: "X offset in logical pixels (used if targetSelector not provided)." },
+                        dy: { type: "number", description: "Y offset in logical pixels (used if targetSelector not provided)." },
+                        durationMs: { type: "number", description: "Drag duration in ms (default 300). Slower = more visible animation." },
                     },
                     required: ["selector"],
                 },
             },
             {
                 name: "long_press",
-                description: "Long press on an element.",
+                description: `Long press (press and hold) on an element. Triggers onLongPress callbacks in Flutter.
+
+Use cases:
+- Show context menus
+- Enable selection/edit mode
+- Trigger haptic feedback actions
+- Activate drag-and-drop mode`,
                 inputSchema: {
                     type: "object",
                     properties: {
-                        selector: { type: "string" },
-                        durationMs: { type: "number", description: "Duration in ms (default 800)." },
+                        selector: { type: "string", description: "Selector for the element to long press." },
+                        durationMs: { type: "number", description: "Press duration in ms (default 800). Some widgets need longer holds." },
                     },
                     required: ["selector"],
                 },
             },
             {
                 name: "double_tap",
-                description: "Double tap on an element.",
+                description: `Double tap (two quick taps) on an element. Triggers onDoubleTap callbacks in Flutter.
+
+Use cases:
+- Zoom in/out on images or maps
+- Select text (word selection)
+- Like/favorite content (Instagram-style)
+- Activate edit mode`,
                 inputSchema: {
                     type: "object",
                     properties: {
-                        selector: { type: "string" },
+                        selector: { type: "string", description: "Selector for the element to double tap." },
                     },
                     required: ["selector"],
                 },
             },
             {
                 name: "get_logs",
-                description: "Get captured console logs from the app.",
+                description: `Get captured console logs (print statements, debugPrint, log calls) from the app.
+
+Use cases:
+- Debug app behavior by checking log output
+- Verify expected events occurred (e.g., API calls, state changes)
+- See developer debugging info
+- Monitor app lifecycle events`,
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -378,7 +483,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "get_errors",
-                description: "Get captured errors (framework and async) from the app.",
+                description: `Get captured errors (Flutter framework errors, async exceptions, uncaught errors) from the app.
+
+Use cases:
+- Debug red screen errors
+- Find async/Future errors that may be swallowed
+- Identify framework-level issues
+- Debug crashes or unexpected behavior
+
+Returns error messages, stack traces, and error types.`,
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -386,7 +499,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "get_performance_metrics",
-                description: "Get frame timing metrics (build/raster times).",
+                description: `Get frame timing metrics for performance analysis.
+
+Returns:
+- Build times (widget tree construction)
+- Raster times (GPU rendering)
+- Frame counts and rates
+
+Use to identify:
+- Jank (frames taking >16ms)
+- Performance regressions
+- Heavy build/raster operations`,
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -394,25 +517,41 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "set_text",
-                description: "Set the text of a text field directly (replaces existing text).",
+                description: `Set (replace) the entire text content of a text field. Unlike enter_text which appends, this REPLACES all existing text.
+
+Use cases:
+- Clear and set new value in one operation
+- Fill forms where you need exact text content
+- Reset field to known state before testing
+
+Note: Field should exist in the widget tree (use list_elements to verify).`,
                 inputSchema: {
                     type: "object",
                     properties: {
-                        selector: { type: "string" },
-                        text: { type: "string" },
+                        selector: { type: "string", description: "Selector for the text field to modify." },
+                        text: { type: "string", description: "New text content (replaces existing)." },
                     },
                     required: ["selector", "text"],
                 },
             },
             {
                 name: "set_selection",
-                description: "Set the selection range (cursor position) of a text field.",
+                description: `Set the text selection range (cursor position) within a text field.
+
+Use cases:
+- Position cursor at specific location (set base=extent for cursor, no selection)
+- Select portion of text for copy/cut/delete (base != extent)
+- Select all text (base=0, extent=text.length)
+
+Parameters:
+- base: Start of selection (0-indexed character position)
+- extent: End of selection (0-indexed)`,
                 inputSchema: {
                     type: "object",
                     properties: {
-                        selector: { type: "string" },
-                        base: { type: "number", description: "Start offset of selection." },
-                        extent: { type: "number", description: "End offset of selection." },
+                        selector: { type: "string", description: "Selector for the text field." },
+                        base: { type: "number", description: "Selection start offset (0-indexed)." },
+                        extent: { type: "number", description: "Selection end offset (0-indexed). Same as base for cursor position." },
                     },
                     required: ["selector", "base", "extent"],
                 },
@@ -420,7 +559,15 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
 
             {
                 name: "start_recording",
-                description: "Start recording user interactions (taps, text entry) to generate a FAP script.",
+                description: `Start recording user interactions to generate a replayable FAP script.
+
+Records:
+- Taps and tap coordinates
+- Text entry
+- Scrolls and gestures
+- Navigation events
+
+Use to create test scripts from manual interaction sessions.`,
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -428,7 +575,10 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "stop_recording",
-                description: "Stop the recording session.",
+                description: `Stop the recording session and get the recorded interaction script.
+
+Call this after performing the manual interactions you want to capture.
+Returns a script that can be replayed for automated testing.`,
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -436,16 +586,22 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
 
             // === Development Tools ===
+            // These tools enable autonomous development workflows:
+            // edit code → hot reload → test UI → iterate
 
             {
                 name: "set_project_root",
-                description: "Set the Flutter project directory for file operations, code analysis, and test execution. Must be called before using other dev tools.",
+                description: `Set the Flutter project directory for file operations, code analysis, and test execution.
+
+MUST be called FIRST before using: read_file, write_file, search_code, list_files, analyze_code, apply_fixes, format_code, run_tests.
+
+The path should be the root of the Flutter project (where pubspec.yaml is located).`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         path: {
                             type: "string",
-                            description: "Absolute path to the Flutter project root directory.",
+                            description: "Absolute path to Flutter project root (where pubspec.yaml lives).",
                         },
                     },
                     required: ["path"],
@@ -453,13 +609,20 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "set_vm_service_uri",
-                description: "Set the Flutter VM Service URI for hot reload. Get this from the flutter run output (e.g., 'http://127.0.0.1:XXXXX/XXXXX=/ws').",
+                description: `Set the Flutter VM Service URI for hot reload/restart capabilities.
+
+How to get the URI:
+1. Run 'flutter run' in the terminal
+2. Look for output like: "Flutter DevTools at http://127.0.0.1:XXXXX?uri=..."
+3. The VM Service URI is in the format: http://127.0.0.1:XXXXX/XXXXX=/
+
+MUST be called before: hot_reload, hot_restart, get_vm_info.`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         uri: {
                             type: "string",
-                            description: "The VM Service URI from flutter run output.",
+                            description: "VM Service URI from flutter run output (e.g., 'http://127.0.0.1:50505/abc123=/').",
                         },
                     },
                     required: ["uri"],
@@ -467,7 +630,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "hot_reload",
-                description: "Trigger a hot reload to apply code changes without losing app state. Requires set_vm_service_uri to be called first.",
+                description: `Trigger a hot reload to apply code changes WITHOUT losing app state.
+
+Requires: set_vm_service_uri called first.
+
+Hot reload:
+- Injects updated code into running Dart VM
+- Preserves app state (variables, navigation, etc.)
+- Fast (~sub-second)
+- Use for UI changes, minor code tweaks
+
+Won't work for: main() changes, global initializers, enum changes, some static fields.`,
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -475,7 +648,17 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "hot_restart",
-                description: "Trigger a hot restart to fully restart the app with new code. Requires set_vm_service_uri to be called first.",
+                description: `Trigger a hot restart to fully restart the app with new code.
+
+Requires: set_vm_service_uri called first.
+
+Hot restart:
+- Restarts the Dart VM completely
+- Loses all app state (returns to initial screen)
+- Slower than hot reload (~2-5 seconds)
+- Use for: main() changes, initialization changes, global state reset
+
+Use when hot_reload fails or state needs reset.`,
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -483,13 +666,18 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "read_file",
-                description: "Read the contents of a file in the project.",
+                description: `Read the contents of a file in the project.
+
+Requires: set_project_root called first.
+
+Supports relative paths (from project root) or absolute paths.
+Common uses: read lib/main.dart, read test/widget_test.dart`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         path: {
                             type: "string",
-                            description: "File path relative to project root, or absolute path.",
+                            description: "File path (relative to project root, or absolute). Example: 'lib/main.dart'",
                         },
                     },
                     required: ["path"],
@@ -497,17 +685,25 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "write_file",
-                description: "Write content to a file in the project. Creates directories as needed.",
+                description: `Write content to a file in the project. Creates parent directories as needed.
+
+Requires: set_project_root called first.
+
+Workflow for code changes:
+1. read_file to get current content
+2. Modify the content
+3. write_file to save changes
+4. hot_reload to apply changes to running app`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         path: {
                             type: "string",
-                            description: "File path relative to project root, or absolute path.",
+                            description: "File path (relative or absolute). Parent directories created automatically.",
                         },
                         content: {
                             type: "string",
-                            description: "The content to write to the file.",
+                            description: "Complete file content to write.",
                         },
                     },
                     required: ["path", "content"],
@@ -515,17 +711,24 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "search_code",
-                description: "Search for code patterns in the project using grep.",
+                description: `Search for code patterns in the project using grep (regex supported).
+
+Requires: set_project_root called first.
+
+Examples:
+- search_code('class.*Widget') - find all Widget classes
+- search_code('TODO', '*.dart') - find TODOs in Dart files
+- search_code('api_key', '*.dart') - security audit for hardcoded keys`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         pattern: {
                             type: "string",
-                            description: "The pattern to search for (supports regex).",
+                            description: "Search pattern (supports regex). Examples: 'setState', 'class.*StatefulWidget'",
                         },
                         filePattern: {
                             type: "string",
-                            description: "File pattern to search in (default: *.dart). Examples: *.dart, *.yaml, *.json",
+                            description: "File glob pattern (default: *.dart). Examples: '*.yaml', '*.json', 'test/*.dart'",
                         },
                     },
                     required: ["pattern"],
@@ -533,24 +736,40 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "list_files",
-                description: "List files in a directory, optionally filtered by pattern.",
+                description: `List files in a directory, optionally filtered by pattern.
+
+Requires: set_project_root called first.
+
+Examples:
+- list_files('lib') - list all files in lib/
+- list_files('lib', '.dart') - only Dart files
+- list_files('test', '_test.dart') - only test files`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         path: {
                             type: "string",
-                            description: "Directory path relative to project root (default: '.').",
+                            description: "Directory path relative to project root (default: '.' for project root).",
                         },
                         pattern: {
                             type: "string",
-                            description: "Filter files by pattern (e.g., '.dart', 'test').",
+                            description: "Filter pattern (e.g., '.dart', 'test', '_widget').",
                         },
                     },
                 },
             },
             {
                 name: "analyze_code",
-                description: "Run dart analyze to find code issues (warnings, errors, hints).",
+                description: `Run 'dart analyze' to find code issues (errors, warnings, hints, lints).
+
+Requires: set_project_root called first.
+
+Returns:
+- Compilation errors (must fix)
+- Warnings (should fix)
+- Hints and style suggestions (optional)
+
+Run after code changes to catch issues before hot reload.`,
                 inputSchema: {
                     type: "object",
                     properties: {},
@@ -558,20 +777,34 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "apply_fixes",
-                description: "Run dart fix to automatically fix code issues.",
+                description: `Run 'dart fix' to automatically fix code issues.
+
+Requires: set_project_root called first.
+
+Fixes include:
+- Deprecated API migrations
+- Lint rule violations
+- Style corrections
+
+Use dryRun=true first to preview changes.`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         dryRun: {
                             type: "boolean",
-                            description: "If true, show what would be fixed without applying changes.",
+                            description: "If true, show proposed fixes without applying. Default: false (apply fixes).",
                         },
                     },
                 },
             },
             {
                 name: "format_code",
-                description: "Run dart format to format code files.",
+                description: `Run 'dart format' to format code files according to Dart style guide.
+
+Requires: set_project_root called first.
+
+Formats code to standard 80-char line width with consistent indentation.
+Run before committing code.`,
                 inputSchema: {
                     type: "object",
                     properties: {
@@ -584,24 +817,40 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: "run_tests",
-                description: "Run Flutter tests.",
+                description: `Run Flutter/Dart tests.
+
+Requires: set_project_root called first.
+
+Examples:
+- run_tests() - run all tests
+- run_tests('test/widget_test.dart') - run specific test
+- run_tests('test/unit/', 'expanded') - run directory with verbose output`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         path: {
                             type: "string",
-                            description: "Specific test file or directory to run (optional).",
+                            description: "Test file or directory (optional, defaults to all tests).",
                         },
                         reporter: {
                             type: "string",
-                            description: "Test reporter: 'compact', 'expanded', 'json' (default: compact).",
+                            description: "Output format: 'compact' (default), 'expanded' (verbose), 'json' (machine-readable).",
                         },
                     },
                 },
             },
             {
                 name: "get_vm_info",
-                description: "Get information about the Flutter VM (isolates, version, etc.).",
+                description: `Get information about the running Flutter VM.
+
+Requires: set_vm_service_uri called first.
+
+Returns:
+- Dart version
+- Isolate information
+- VM uptime and memory usage
+
+Useful for debugging and verifying connection to running app.`,
                 inputSchema: {
                     type: "object",
                     properties: {},
