@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/widgets.dart';
 import 'package:json_rpc_2/json_rpc_2.dart' as json_rpc;
 
 import '../core/actions.dart';
@@ -13,6 +14,8 @@ import '../../fap_agent.dart';
 
 import '../core/recorder.dart';
 import '../core/widget_inspector_bridge.dart';
+import '../core/text_input_simulator.dart';
+import '../core/flutter_controller.dart';
 
 abstract class FapRpcHandler {
   FapAgent get agent;
@@ -369,6 +372,341 @@ class FapRpcHandlerImpl implements FapRpcHandler {
         return widgets.map((w) => w.toJson()).toList();
       } catch (e) {
         throw json_rpc.RpcException(300, 'Widget search error: $e');
+      }
+    });
+
+    // Smart Text Entry (Widget Inspector + Keyboard Simulation)
+    peer.registerMethod('smartEnterText', (json_rpc.Parameters params) async {
+      try {
+        final text = params['text'].asString;
+        String? widgetType;
+        Offset? coordinates;
+
+        // Check for widgetType parameter
+        try {
+          widgetType = params['widgetType'].asString;
+        } catch (_) {}
+
+        // Check for coordinate parameters
+        if (params.asMap.containsKey('x') && params.asMap.containsKey('y')) {
+          final x = params['x'].asNum.toDouble();
+          final y = params['y'].asNum.toDouble();
+          coordinates = Offset(x, y);
+        }
+
+        final result = await _executor.smartEnterText(
+          text: text,
+          widgetType: widgetType,
+          coordinates: coordinates,
+        );
+
+        return result;
+      } catch (e) {
+        throw json_rpc.RpcException(300, 'Smart text entry error: $e');
+      }
+    });
+
+    // Text Input Status (diagnostic)
+    peer.registerMethod('getTextInputStatus', ([json_rpc.Parameters? params]) {
+      final simulator = TextInputSimulator.instance;
+      return {
+        'hasActiveInput': simulator.hasActiveInput,
+        'clientId': simulator.currentClientId,
+        'currentText': simulator.currentText,
+      };
+    });
+
+    // Type text into currently focused field (requires prior tap)
+    peer.registerMethod('typeText', (json_rpc.Parameters params) async {
+      try {
+        final text = params['text'].asString;
+        final simulator = TextInputSimulator.instance;
+
+        if (!simulator.hasActiveInput) {
+          return {
+            'success': false,
+            'error': 'No active text input. Tap a text field first.',
+          };
+        }
+
+        await simulator.typeText(text);
+
+        return {
+          'success': true,
+          'text': text,
+          'clientId': simulator.currentClientId,
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(300, 'Type text error: $e');
+      }
+    });
+
+    // Set text directly (replaces existing text)
+    peer.registerMethod('setTextDirect', (json_rpc.Parameters params) async {
+      try {
+        final text = params['text'].asString;
+        final simulator = TextInputSimulator.instance;
+
+        if (!simulator.hasActiveInput) {
+          return {
+            'success': false,
+            'error': 'No active text input. Tap a text field first.',
+          };
+        }
+
+        await simulator.setText(text);
+
+        return {
+          'success': true,
+          'text': text,
+          'clientId': simulator.currentClientId,
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(300, 'Set text error: $e');
+      }
+    });
+
+    // Clear text in focused field
+    peer.registerMethod('clearTextInput', ([json_rpc.Parameters? params]) async {
+      try {
+        final simulator = TextInputSimulator.instance;
+
+        if (!simulator.hasActiveInput) {
+          return {
+            'success': false,
+            'error': 'No active text input. Tap a text field first.',
+          };
+        }
+
+        await simulator.clearText();
+
+        return {
+          'success': true,
+          'clientId': simulator.currentClientId,
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(300, 'Clear text error: $e');
+      }
+    });
+
+    // Press special keys
+    peer.registerMethod('pressKey', (json_rpc.Parameters params) async {
+      try {
+        final key = params['key'].asString.toLowerCase();
+        final simulator = TextInputSimulator.instance;
+
+        if (!simulator.hasActiveInput) {
+          return {
+            'success': false,
+            'error': 'No active text input. Tap a text field first.',
+          };
+        }
+
+        switch (key) {
+          case 'enter':
+          case 'return':
+            await simulator.pressEnter();
+            break;
+          case 'backspace':
+          case 'delete':
+            await simulator.pressBackspace();
+            break;
+          default:
+            return {
+              'success': false,
+              'error': 'Unknown key: $key. Supported: enter, backspace',
+            };
+        }
+
+        return {
+          'success': true,
+          'key': key,
+          'clientId': simulator.currentClientId,
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(300, 'Press key error: $e');
+      }
+    });
+
+    // ========================================
+    // FLUTTER CONTROLLER - Direct Widget Access
+    // ========================================
+
+    final controller = FlutterController.instance;
+
+    // Find elements by widget type
+    peer.registerMethod('findElements', (json_rpc.Parameters params) {
+      try {
+        final typeName = params['type'].asString;
+        final exact = params.asMap.containsKey('exact') ? params['exact'].asBool : false;
+
+        final elements = controller.findByWidgetType(typeName, exact: exact);
+
+        return {
+          'count': elements.length,
+          'elements': elements.map((e) {
+            final bounds = controller.getElementBounds(e);
+            return {
+              'widgetType': e.widget.runtimeType.toString(),
+              'key': e.widget.key?.toString(),
+              'isStateful': e is StatefulElement,
+              'bounds': bounds != null ? {
+                'x': bounds.left,
+                'y': bounds.top,
+                'w': bounds.width,
+                'h': bounds.height,
+              } : null,
+            };
+          }).toList(),
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(400, 'Find elements error: $e');
+      }
+    });
+
+    // Find elements at position
+    peer.registerMethod('findElementsAtPosition', (json_rpc.Parameters params) {
+      try {
+        final x = params['x'].asNum.toDouble();
+        final y = params['y'].asNum.toDouble();
+
+        final elements = controller.findAtPosition(Offset(x, y));
+
+        return {
+          'count': elements.length,
+          'elements': elements.map((e) {
+            final bounds = controller.getElementBounds(e);
+            return {
+              'widgetType': e.widget.runtimeType.toString(),
+              'key': e.widget.key?.toString(),
+              'isStateful': e is StatefulElement,
+              'bounds': bounds != null ? {
+                'x': bounds.left,
+                'y': bounds.top,
+                'w': bounds.width,
+                'h': bounds.height,
+              } : null,
+            };
+          }).toList(),
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(400, 'Find at position error: $e');
+      }
+    });
+
+    // Find TextEditingControllers
+    peer.registerMethod('findTextControllers', ([json_rpc.Parameters? params]) {
+      try {
+        final controllers = controller.findTextControllers();
+
+        return {
+          'count': controllers.length,
+          'controllers': controllers.map((c) => {
+            'widgetType': c.widgetType,
+            'text': c.controller.text,
+            'selectionStart': c.controller.selection.start,
+            'selectionEnd': c.controller.selection.end,
+            'bounds': c.bounds != null ? {
+              'x': c.bounds!.left,
+              'y': c.bounds!.top,
+              'w': c.bounds!.width,
+              'h': c.bounds!.height,
+            } : null,
+          }).toList(),
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(400, 'Find text controllers error: $e');
+      }
+    });
+
+    // Set text by widget type (direct controller access)
+    peer.registerMethod('setTextByType', (json_rpc.Parameters params) async {
+      try {
+        final widgetType = params['widgetType'].asString;
+        final text = params['text'].asString;
+        final index = params.asMap.containsKey('index') ? params['index'].asInt : 0;
+
+        return await controller.setTextByWidgetType(widgetType, text, index: index);
+      } catch (e) {
+        throw json_rpc.RpcException(400, 'Set text error: $e');
+      }
+    });
+
+    // Execute action on widget
+    peer.registerMethod('executeAction', (json_rpc.Parameters params) async {
+      try {
+        final widgetType = params['widgetType'].asString;
+        final action = params['action'].asString;
+        final index = params.asMap.containsKey('index') ? params['index'].asInt : 0;
+
+        // Extract action params
+        final actionParams = <String, dynamic>{};
+        for (final key in params.asMap.keys) {
+          if (key != 'widgetType' && key != 'action' && key != 'index') {
+            actionParams[key] = params[key].value;
+          }
+        }
+
+        return await controller.executeAction(
+          widgetType,
+          action,
+          actionParams,
+          index: index,
+        );
+      } catch (e) {
+        throw json_rpc.RpcException(400, 'Execute action error: $e');
+      }
+    });
+
+    // Get widget tree structure
+    peer.registerMethod('getElementTree', (json_rpc.Parameters params) {
+      try {
+        final maxDepth = params.asMap.containsKey('maxDepth')
+            ? params['maxDepth'].asInt
+            : 5;
+
+        final tree = controller.getWidgetTree(maxDepth: maxDepth);
+        return _compressIfNeeded(tree);
+      } catch (e) {
+        throw json_rpc.RpcException(400, 'Get element tree error: $e');
+      }
+    });
+
+    // Find States by type
+    peer.registerMethod('findStates', (json_rpc.Parameters params) {
+      try {
+        final stateType = params['stateType'].asString;
+        final states = controller.findStatesByType(stateType);
+
+        return {
+          'count': states.length,
+          'states': states.map((s) => s.toJson()).toList(),
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(400, 'Find states error: $e');
+      }
+    });
+
+    // Find ScrollControllers
+    peer.registerMethod('findScrollControllers', ([json_rpc.Parameters? params]) {
+      try {
+        final controllers = controller.findScrollControllers();
+
+        return {
+          'count': controllers.length,
+          'controllers': controllers.map((c) => {
+            'widgetType': c.widgetType,
+            'offset': c.controller.hasClients ? c.controller.offset : null,
+            'bounds': c.bounds != null ? {
+              'x': c.bounds!.left,
+              'y': c.bounds!.top,
+              'w': c.bounds!.width,
+              'h': c.bounds!.height,
+            } : null,
+          }).toList(),
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(400, 'Find scroll controllers error: $e');
       }
     });
   }

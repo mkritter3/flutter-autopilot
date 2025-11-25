@@ -286,6 +286,79 @@ export class FapClient {
         return this.request('doubleTap', { selector });
     }
 
+    async smartEnterText(text: string, options: { widgetType?: string; x?: number; y?: number } = {}): Promise<any> {
+        const params: any = { text };
+        if (options.widgetType) params.widgetType = options.widgetType;
+        if (options.x !== undefined && options.y !== undefined) {
+            params.x = options.x;
+            params.y = options.y;
+        }
+        return this.request('smartEnterText', params);
+    }
+
+    // Text Input Simulation Methods
+
+    async getTextInputStatus(): Promise<{ hasActiveInput: boolean; clientId: number | null; currentText: string }> {
+        return this.request('getTextInputStatus');
+    }
+
+    async typeText(text: string): Promise<any> {
+        return this.request('typeText', { text });
+    }
+
+    async setTextDirect(text: string): Promise<any> {
+        return this.request('setTextDirect', { text });
+    }
+
+    async clearTextInput(): Promise<any> {
+        return this.request('clearTextInput');
+    }
+
+    async pressKey(key: 'enter' | 'backspace'): Promise<any> {
+        return this.request('pressKey', { key });
+    }
+
+    // ==========================================
+    // Flutter Controller - Direct Widget Access
+    // ==========================================
+
+    async findElements(type: string, exact: boolean = false): Promise<any> {
+        return this.request('findElements', { type, exact });
+    }
+
+    async findElementsAtPosition(x: number, y: number): Promise<any> {
+        return this.request('findElementsAtPosition', { x, y });
+    }
+
+    async findTextControllers(): Promise<any> {
+        return this.request('findTextControllers');
+    }
+
+    async setTextByType(widgetType: string, text: string, index: number = 0): Promise<any> {
+        return this.request('setTextByType', { widgetType, text, index });
+    }
+
+    async executeAction(
+        widgetType: string,
+        action: string,
+        params: Record<string, any> = {},
+        index: number = 0
+    ): Promise<any> {
+        return this.request('executeAction', { widgetType, action, index, ...params });
+    }
+
+    async getElementTree(maxDepth: number = 5): Promise<any> {
+        return this.request('getElementTree', { maxDepth });
+    }
+
+    async findStates(stateType: string): Promise<any> {
+        return this.request('findStates', { stateType });
+    }
+
+    async findScrollControllers(): Promise<any> {
+        return this.request('findScrollControllers');
+    }
+
     async getPerformanceMetrics(): Promise<{ build: number; raster: number; total: number }[]> {
         return this.request('getPerformanceMetrics');
     }

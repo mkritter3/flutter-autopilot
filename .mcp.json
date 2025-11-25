@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "flutter-agent": {
+      "command": "node",
+      "args": [
+        "/Users/mkr/local-coding/flutter-ai-testing/fap_mcp/dist/index.js"
+      ],
+      "env": {
+        "FAP_SECRET_TOKEN": "dev-test-token"
+      }
+    }
+  }
+}

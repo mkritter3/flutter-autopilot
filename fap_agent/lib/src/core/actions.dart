@@ -2,6 +2,11 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
+
+import 'text_input_simulator.dart';
+import 'widget_inspector_bridge.dart';
 
 class ActionExecutor {
   static int _pointerId = 0;
@@ -245,5 +250,97 @@ class ActionExecutor {
 
   void _dispatchPointerEvent(PointerEvent event) {
     GestureBinding.instance.handlePointerEvent(event);
+  }
+
+  /// Smart text entry with Widget Inspector fallback
+  /// Finds widget, taps to focus, then types text programmatically
+  Future<Map<String, dynamic>> smartEnterText({
+    required String text,
+    String? widgetType,
+    Offset? coordinates,
+  }) async {
+    try {
+      Offset targetPosition;
+
+      // Determine target position
+      if (coordinates != null) {
+        targetPosition = coordinates;
+      } else if (widgetType != null) {
+        // Use Widget Inspector to find widget by type
+        final inspector = WidgetInspectorBridge.instance;
+        final widgets = await inspector.findByType(widgetType);
+
+        if (widgets.isEmpty) {
+          return {
+            'success': false,
+            'error': 'Widget type $widgetType not found',
+          };
+        }
+
+        final widget = widgets.first;
+        targetPosition = Offset(
+          widget.bounds.left + widget.bounds.width / 2,
+          widget.bounds.top + widget.bounds.height / 2,
+        );
+      } else {
+        return {
+          'success': false,
+          'error': 'Either widgetType or coordinates must be provided',
+        };
+      }
+
+      // Tap to focus
+      debugPrint('smartEnterText: Tapping at $targetPosition to focus');
+      await tapAt(targetPosition);
+
+      // Wait for text input connection
+      final simulator = TextInputSimulator.instance;
+      final connected = await _waitForTextInput(simulator, timeoutMs: 2000);
+
+      if (!connected) {
+        return {
+          'success': false,
+          'error': 'No text input connected after tap. '
+              'The widget at $targetPosition may not be a text field, '
+              'or it may use a custom input method.',
+          'position': {'x': targetPosition.dx, 'y': targetPosition.dy},
+          'hasActiveInput': simulator.hasActiveInput,
+          'clientId': simulator.currentClientId,
+        };
+      }
+
+      debugPrint('smartEnterText: Text input connected (client ${simulator.currentClientId}), typing...');
+
+      // Type text programmatically
+      await simulator.typeText(text);
+
+      return {
+        'success': true,
+        'method': 'widget_inspector_keyboard',
+        'position': {'x': targetPosition.dx, 'y': targetPosition.dy},
+        'text': text,
+        'clientId': simulator.currentClientId,
+      };
+    } catch (e, stack) {
+      debugPrint('smartEnterText error: $e\n$stack');
+      return {
+        'success': false,
+        'error': e.toString(),
+      };
+    }
+  }
+
+  /// Wait for text input to become active after tapping
+  Future<bool> _waitForTextInput(TextInputSimulator simulator, {int timeoutMs = 2000}) async {
+    final deadline = DateTime.now().add(Duration(milliseconds: timeoutMs));
+
+    while (DateTime.now().isBefore(deadline)) {
+      if (simulator.hasActiveInput) {
+        return true;
+      }
+      await Future.delayed(const Duration(milliseconds: 50));
+    }
+
+    return false;
   }
 }

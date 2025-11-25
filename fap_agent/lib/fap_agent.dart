@@ -14,10 +14,13 @@ import 'src/widgets/fap_navigator_observer.dart';
 import 'src/core/semantics_index.dart';
 import 'src/core/recorder.dart';
 import 'src/core/widget_inspector_bridge.dart';
+import 'src/core/text_input_simulator.dart';
 
 export 'src/widgets/fap_meta.dart';
 export 'src/widgets/fap_navigator_observer.dart';
 export 'src/core/widget_inspector_bridge.dart';
+export 'src/core/text_input_simulator.dart';
+export 'src/core/flutter_controller.dart';
 
 class FapConfig {
   final int port;
@@ -149,6 +152,11 @@ class FapAgent {
       // Initialize Widget Inspector for advanced widget targeting
       WidgetInspectorBridge.instance.initialize();
       print('FAP Widget Inspector: Enabled');
+
+      // Initialize Text Input Simulator for keyboard simulation
+      // Accessing .instance installs the channel interceptor
+      final _ = TextInputSimulator.instance;
+      print('FAP TextInputSimulator: Interceptor installed');
     }
   }
 
