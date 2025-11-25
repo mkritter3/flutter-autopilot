@@ -138,6 +138,11 @@ class FapAgent {
     if (_clientCount == 1 && _semanticsHandle == null) {
       _semanticsHandle = SemanticsBinding.instance.ensureSemantics();
       print('FapAgent: Semantics enabled (client connected)');
+
+      // Force a frame rebuild to populate the Semantics tree
+      // Without this, the tree may remain empty even after ensureSemantics()
+      SchedulerBinding.instance.scheduleFrame();
+      print('FapAgent: Frame rebuild scheduled');
     }
   }
 
