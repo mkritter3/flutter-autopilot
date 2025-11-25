@@ -11,3 +11,19 @@
 # Temporary files
 *.log
 *.tmp
+
+# Test projects (private apps used for testing)
+test_projects/neural-novelist-flutter/
+test_projects/north-star-v4/
+
+# Test artifacts
+*.json
+!package.json
+!package-lock.json
+*.png
+test_*.js
+test_*.ts
+test_*.mjs
+
+# Node
+node_modules/
