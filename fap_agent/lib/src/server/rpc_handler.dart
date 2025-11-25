@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui';
+import 'package:flutter/rendering.dart' show SemanticsFlag;
 import 'package:flutter/widgets.dart';
 import 'package:json_rpc_2/json_rpc_2.dart' as json_rpc;
 
@@ -73,6 +74,15 @@ class FapRpcHandlerImpl implements FapRpcHandler {
       return _compressIfNeeded(data);
     });
 
+    peer.registerMethod('getPlaceholders', ([json_rpc.Parameters? params]) {
+      final placeholders = _indexer.getPlaceholders();
+      final data = placeholders.map((e) => e.toJson()).toList();
+      return {
+        'count': placeholders.length,
+        'placeholders': data,
+      };
+    });
+
     peer.registerMethod('getRoute', ([json_rpc.Parameters? params]) {
       return agent.navigatorObserver.currentRoute;
     });
@@ -116,57 +126,89 @@ class FapRpcHandlerImpl implements FapRpcHandler {
     peer.registerMethod('enterText', (json_rpc.Parameters params) async {
       final text = params['text'].asString;
       String? selectorString;
+      bool tapFirst = false;
+      bool fallbackToFocused = true;
+
       try {
         selectorString = params['selector'].asString;
       } catch (_) {
         // selector is optional
       }
+      try {
+        tapFirst = params['tap_first'].asBool;
+      } catch (_) {}
+      try {
+        fallbackToFocused = params['fallback_to_focused'].asBool;
+      } catch (_) {}
 
+      String? strategyUsed;
+
+      // Strategy 1: Find by selector
       if (selectorString != null) {
         final selector = Selector.parse(selectorString);
         final elements = _indexer.find(selector);
-        if (elements.isEmpty) {
-          throw json_rpc.RpcException(
-            100,
-            'Element not found: $selectorString',
-          );
+
+        if (elements.isNotEmpty) {
+          final element = elements.first;
+          if (element.isInteractable) {
+            if (tapFirst) {
+              await _executor.tap(element.globalRect, semanticsNode: element.node);
+              await Future.delayed(const Duration(milliseconds: 100));
+            }
+            await _executor.enterText(element.node, text);
+            strategyUsed = 'selector';
+            return {'status': 'text_entered', 'text': text, 'strategy': strategyUsed};
+          }
         }
-        final element = elements.first;
-        if (!element.isInteractable) {
-          throw json_rpc.RpcException(
-            102,
-            'Element is not interactable: $selectorString',
-          );
-        }
-        await _executor.enterText(element.node, text);
-      } else {
-        throw json_rpc.RpcException(100, 'Selector required for enterText');
       }
 
-      return {'status': 'text_entered', 'text': text};
+      // Strategy 2: Use focused text field via TextInputSimulator
+      if (fallbackToFocused && TextInputSimulator.instance.hasActiveInput) {
+        await TextInputSimulator.instance.typeText(text);
+        strategyUsed = 'focused_field';
+        return {'status': 'text_entered', 'text': text, 'strategy': strategyUsed};
+      }
+
+      // All strategies failed - throw diagnostic error
+      throw _buildTextInputError(selectorString, text);
     });
 
     peer.registerMethod('setText', (json_rpc.Parameters params) async {
       final text = params['text'].asString;
-      final selectorString = params['selector'].asString;
+      String? selectorString;
+      bool fallbackToFocused = true;
 
-      final elements = _indexer.find(Selector.parse(selectorString));
-      if (elements.isEmpty)
-        throw json_rpc.RpcException(100, 'Element not found: $selectorString');
+      try {
+        selectorString = params['selector'].asString;
+      } catch (_) {}
+      try {
+        fallbackToFocused = params['fallback_to_focused'].asBool;
+      } catch (_) {}
 
-      final element = elements.first;
-      if (!element.isInteractable) {
-        throw json_rpc.RpcException(
-          102,
-          'Element is not interactable: $selectorString',
-        );
+      String? strategyUsed;
+
+      // Strategy 1: Find by selector
+      if (selectorString != null) {
+        final elements = _indexer.find(Selector.parse(selectorString));
+        if (elements.isNotEmpty) {
+          final element = elements.first;
+          if (element.isInteractable) {
+            await _executor.enterText(element.node, text);
+            strategyUsed = 'selector';
+            return {'status': 'text_set', 'text': text, 'strategy': strategyUsed};
+          }
+        }
       }
 
-      await _executor.enterText(
-        element.node,
-        text,
-      ); // enterText uses SemanticsAction.setText which replaces text
-      return {'status': 'text_set', 'text': text};
+      // Strategy 2: Use focused text field via TextInputSimulator
+      if (fallbackToFocused && TextInputSimulator.instance.hasActiveInput) {
+        await TextInputSimulator.instance.setText(text);
+        strategyUsed = 'focused_field';
+        return {'status': 'text_set', 'text': text, 'strategy': strategyUsed};
+      }
+
+      // All strategies failed - throw diagnostic error
+      throw _buildTextInputError(selectorString, text);
     });
 
     peer.registerMethod('setSelection', (json_rpc.Parameters params) async {
@@ -723,5 +765,39 @@ class FapRpcHandlerImpl implements FapRpcHandler {
     }
 
     return data;
+  }
+
+  /// Build diagnostic error for text input failures
+  json_rpc.RpcException _buildTextInputError(String? selector, String text) {
+    // Find all available text fields for diagnostics
+    final textFields = _indexer.elements.values
+        .where((e) => e.node != null && e.node!.hasFlag(SemanticsFlag.isTextField))
+        .take(5)
+        .map((e) {
+          final nodeLabel = e.node?.label ?? '';
+          final label = nodeLabel.isNotEmpty ? nodeLabel : (e.label ?? '(no label)');
+          // Truncate long labels that have newlines
+          final displayLabel = label.length > 50
+              ? '${label.substring(0, 50).replaceAll('\n', '\\n')}...'
+              : label.replaceAll('\n', '\\n');
+          return '  - "$displayLabel" [key=${e.key ?? 'none'}, type=${e.type ?? 'unknown'}]';
+        })
+        .join('\n');
+
+    final hasFocusedField = TextInputSimulator.instance.hasActiveInput;
+
+    return json_rpc.RpcException(
+      100,
+      'Text input failed.\n'
+      'Selector: ${selector ?? "(none)"}\n'
+      'Text: "${text.length > 20 ? text.substring(0, 20) + '...' : text}"\n'
+      'Has focused field: $hasFocusedField\n'
+      'Available text fields:\n${textFields.isEmpty ? '  (none found)' : textFields}\n'
+      'Tips:\n'
+      '  - Labels are now auto-normalized (multiline labels work)\n'
+      '  - Partial matches work: label="Project" matches "Project Title\\nSubtext"\n'
+      '  - Try tap_first=true if field needs focus first\n'
+      '  - Try tapping the field first, then call enterText without selector',
+    );
   }
 }

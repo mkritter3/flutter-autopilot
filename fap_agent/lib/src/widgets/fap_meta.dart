@@ -12,12 +12,33 @@ import 'package:flutter/widgets.dart';
 ///   child: ElevatedButton(...),
 /// )
 /// ```
+///
+/// For marking placeholder/stub components:
+/// ```dart
+/// FapMeta(
+///   isPlaceholder: true,
+///   placeholderReason: 'Feature coming in v2.0',
+///   child: ElevatedButton(
+///     onPressed: null,
+///     child: Text('Export PDF'),
+///   ),
+/// )
+/// ```
 class FapMeta extends ProxyWidget {
+  /// Custom metadata key-value pairs
   final Map<String, String> metadata;
+
+  /// Whether this widget is a placeholder/stub that is not yet implemented
+  final bool isPlaceholder;
+
+  /// Reason why this widget is a placeholder (e.g., "Coming in v2.0", "Requires premium")
+  final String? placeholderReason;
 
   const FapMeta({
     super.key,
-    required this.metadata,
+    this.metadata = const {},
+    this.isPlaceholder = false,
+    this.placeholderReason,
     required super.child,
   });
 

@@ -242,12 +242,28 @@ export class FapClient {
         return this.request('tapAt', { x, y });
     }
 
-    async enterText(text: string, selector?: string): Promise<void> {
-        await this.request('enterText', { text, selector });
+    async enterText(text: string, selector?: string, options?: {
+        tapFirst?: boolean;
+        fallbackToFocused?: boolean;
+    }): Promise<any> {
+        return this.request('enterText', {
+            text,
+            selector,
+            tap_first: options?.tapFirst,
+            fallback_to_focused: options?.fallbackToFocused,
+        });
     }
 
-    async setText(selector: string, text: string): Promise<void> {
-        await this.request('setText', { selector, text });
+    async setText(selector: string, text: string, options?: {
+        tapFirst?: boolean;
+        fallbackToFocused?: boolean;
+    }): Promise<any> {
+        return this.request('setText', {
+            selector,
+            text,
+            tap_first: options?.tapFirst,
+            fallback_to_focused: options?.fallbackToFocused,
+        });
     }
 
     async setSelection(selector: string, base: number, extent: number): Promise<void> {
@@ -365,5 +381,9 @@ export class FapClient {
 
     async getLogs(): Promise<string[]> {
         return this.request('getLogs');
+    }
+
+    async getPlaceholders(): Promise<{ count: number; placeholders: FapElement[] }> {
+        return this.request('getPlaceholders');
     }
 }

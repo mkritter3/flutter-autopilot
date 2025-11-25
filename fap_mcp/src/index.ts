@@ -326,32 +326,45 @@ Note: Cannot interact with native iOS/Android views (Plaid SDK, WebViews present
             },
             {
                 name: "enter_text",
-                description: `Enter text into a text field by APPENDING to existing content. Simulates typing character by character.
+                description: `Enter text into a text field. Now with ROBUST FALLBACK STRATEGIES.
 
-Important behavior:
-- This APPENDS text to existing field content (doesn't replace)
-- To replace text, use set_text instead
-- Field should have focus (tap it first if text doesn't appear)
-- Works with TextField, TextFormField, and similar widgets
+Text input uses cascading strategies:
+1. Find by selector (with auto-normalized whitespace/partial matching)
+2. Use currently focused text field (if selector fails)
+
+Key features:
+- Labels are auto-normalized: "Project Title" matches "Project Title\\nMy Amazing Novel"
+- Partial matching: "Project" matches labels containing "Project"
+- tap_first: auto-tap element before entering text
+- fallback_to_focused: if selector fails, type into focused field
+
+Works with TextField, TextFormField, and similar widgets.
 
 Tips:
 - Use list_elements to find the field's selector
-- Prefer key="field_name" selectors when available
-- If enter_text doesn't work, try: tap the field first, then enter_text
-- For obscured fields (passwords), text still enters normally`,
+- If selector doesn't work, try tap_first=true
+- If all else fails, tap the field manually first, then call enter_text without selector`,
                 inputSchema: {
                     type: "object",
                     properties: {
                         selector: {
                             type: "string",
-                            description: "Selector to identify the text field. Prefer key selectors (e.g., 'key=\"email_field\"').",
+                            description: "Selector to identify the text field. Optional - if not provided, uses focused field. Supports partial/normalized matching.",
                         },
                         text: {
                             type: "string",
-                            description: "Text to type into the field. Will be appended to existing content.",
+                            description: "Text to type into the field.",
+                        },
+                        tap_first: {
+                            type: "boolean",
+                            description: "Tap the element before entering text. Useful when field needs focus. Default: false",
+                        },
+                        fallback_to_focused: {
+                            type: "boolean",
+                            description: "If selector fails, enter text into currently focused field. Default: true",
                         },
                     },
-                    required: ["selector", "text"],
+                    required: ["text"],
                 },
             },
             {
@@ -516,8 +529,41 @@ Use to identify:
                 },
             },
             {
+                name: "get_placeholders",
+                description: `Get all placeholder/stub UI elements that are not yet fully implemented.
+
+Returns elements that FAP detects as placeholders through:
+1. Explicit FapMeta marking (isPlaceholder: true)
+2. Heuristic detection:
+   - Disabled buttons (hasEnabledState but not isEnabled)
+   - Buttons without tap actions
+   - Text patterns: "coming soon", "TODO", "WIP", "not implemented", etc.
+   - Metadata keys: 'placeholder', 'stub', 'wip'
+
+Each element includes:
+- isPlaceholder: true
+- placeholderReason: why it's considered a placeholder
+- source: 'semantics' or 'element' (how it was discovered)
+- isEnabled: current enabled state
+
+Use cases:
+- Identify stub features that need implementation
+- Track development progress
+- Find disabled/incomplete UI elements
+- Generate TODO lists from app state`,
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
                 name: "set_text",
                 description: `Set (replace) the entire text content of a text field. Unlike enter_text which appends, this REPLACES all existing text.
+
+Now with ROBUST MATCHING:
+- Labels are auto-normalized: "Project Title" matches "Project Title\\nMy Amazing Novel"
+- Partial matching: "Project" matches labels containing "Project"
+- Fallback to focused field if selector fails
 
 Use cases:
 - Clear and set new value in one operation
@@ -530,6 +576,8 @@ Note: Field should exist in the widget tree (use list_elements to verify).`,
                     properties: {
                         selector: { type: "string", description: "Selector for the text field to modify." },
                         text: { type: "string", description: "New text content (replaces existing)." },
+                        tap_first: { type: "boolean", description: "Tap the element before setting text. Default: false" },
+                        fallback_to_focused: { type: "boolean", description: "If selector fails, set text in currently focused field. Default: true" },
                     },
                     required: ["selector", "text"],
                 },
@@ -907,8 +955,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             }
 
             case "enter_text": {
-                const { selector, text } = request.params.arguments as { selector: string; text: string };
-                const result = await fap.enterText(text, selector);
+                const args = request.params.arguments as {
+                    selector?: string;
+                    text: string;
+                    tap_first?: boolean;
+                    fallback_to_focused?: boolean;
+                };
+                const result = await fap.enterText(args.text, args.selector, {
+                    tapFirst: args.tap_first,
+                    fallbackToFocused: args.fallback_to_focused,
+                });
                 return {
                     content: [
                         {
@@ -1010,11 +1066,26 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 };
             }
 
-            case "set_text": {
-                const { selector, text } = request.params.arguments as { selector: string; text: string };
-                await fap.setText(selector, text);
+            case "get_placeholders": {
+                const result = await fap.getPlaceholders();
                 return {
-                    content: [{ type: "text", text: `Text set to: ${text}` }],
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                };
+            }
+
+            case "set_text": {
+                const args = request.params.arguments as {
+                    selector: string;
+                    text: string;
+                    tap_first?: boolean;
+                    fallback_to_focused?: boolean;
+                };
+                const result = await fap.setText(args.selector, args.text, {
+                    tapFirst: args.tap_first,
+                    fallbackToFocused: args.fallback_to_focused,
+                });
+                return {
+                    content: [{ type: "text", text: `Text set: ${JSON.stringify(result)}` }],
                 };
             }
 

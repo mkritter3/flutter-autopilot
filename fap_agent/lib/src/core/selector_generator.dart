@@ -18,23 +18,33 @@ class SelectorGenerator {
       }
     }
 
-    final data = element.node.getSemanticsData();
-    final text = data.label.isNotEmpty ? data.label : (data.value.isNotEmpty ? data.value : data.hint);
+    // Get text from semantics data or element properties
+    String text = '';
+    String tooltip = '';
+
+    if (element.node != null) {
+      final data = element.node!.getSemanticsData();
+      text = data.label.isNotEmpty ? data.label : (data.value.isNotEmpty ? data.value : data.hint);
+      tooltip = data.tooltip;
+    } else {
+      // For element-based discovery, use extracted label/value
+      text = element.label ?? element.value ?? '';
+    }
 
     // 2. Text / Label
     if (text.isNotEmpty) {
       final escapedText = text.replaceAll('"', '\\"');
       final selector = 'text="$escapedText"';
-      
+
       // Verify uniqueness
       if (_isUnique(selector, indexer)) {
         return selector;
       }
     }
 
-    // 3. Tooltip
-    if (data.tooltip.isNotEmpty) {
-       final escapedTooltip = data.tooltip.replaceAll('"', '\\"');
+    // 3. Tooltip (only for semantics-based elements)
+    if (tooltip.isNotEmpty) {
+       final escapedTooltip = tooltip.replaceAll('"', '\\"');
        final selector = 'tooltip="$escapedTooltip"';
        if (_isUnique(selector, indexer)) {
          return selector;
