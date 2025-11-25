@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/widgets.dart';
 import '../widgets/fap_meta.dart';
@@ -82,6 +83,20 @@ class SemanticsIndexer {
   DateTime _lastReindex = DateTime.fromMillisecondsSinceEpoch(0);
   static const Duration _throttleDuration = Duration(milliseconds: 15);
 
+  // Server-side UI state caching (for navigation across reconnects)
+  Map<String, FapElement> _cachedElements = {};
+  DateTime? _cacheTimestamp;
+  bool _hasCachedData = false;
+  bool _lastResponseWasCached = false;
+  static const Duration _maxCacheAge = Duration(seconds: 5);
+  static const int _maxCacheSize = 10000;
+
+  // Getters for cache metadata
+  bool get lastResponseWasCached => _lastResponseWasCached;
+  int? get cacheAgeSeconds => _cacheTimestamp != null
+      ? DateTime.now().difference(_cacheTimestamp!).inSeconds
+      : null;
+
   void reindex({bool force = false}) {
     final now = DateTime.now();
     if (!force && now.difference(_lastReindex) < _throttleDuration) {
@@ -94,10 +109,13 @@ class SemanticsIndexer {
 
     _elements.clear();
     _nodeIdToElement.clear();
+    _lastResponseWasCached = false;
 
     // 1. Index Semantics
+    debugPrint('SemanticsIndexer: Reindexing... Views: ${RendererBinding.instance.renderViews.length}');
     for (final view in RendererBinding.instance.renderViews) {
       final owner = view.owner?.semanticsOwner;
+      debugPrint('SemanticsIndexer: View $view, Owner: $owner, RootNode: ${owner?.rootSemanticsNode}');
       if (owner?.rootSemanticsNode != null) {
         _traverse(owner!.rootSemanticsNode!, Matrix4.identity());
       }
@@ -115,7 +133,41 @@ class SemanticsIndexer {
     // 2. Enrich with Widget Type/Key info
     _enrichElements();
 
-    print('SemanticsIndexer: Indexed ${_elements.length} elements.');
+    // 3. Server-side caching logic
+    if (_elements.isNotEmpty) {
+      // Fresh data available - update cache
+      _cachedElements = Map.from(_elements);
+      _cacheTimestamp = DateTime.now();
+      _hasCachedData = true;
+
+      // Enforce cache size limit (keep only most recent)
+      if (_cachedElements.length > _maxCacheSize) {
+        print('⚠️  FAP Cache: Size limit exceeded (${_cachedElements.length}), trimming to $_maxCacheSize');
+        final keys = _cachedElements.keys.take(_maxCacheSize).toList();
+        _cachedElements = Map.fromEntries(
+          keys.map((k) => MapEntry(k, _cachedElements[k]!))
+        );
+      }
+
+      print('SemanticsIndexer: Indexed ${_elements.length} elements (cache updated).');
+    } else if (_hasCachedData && _isCacheValid) {
+      // Tree is empty but we have valid cached data - restore from cache
+      _elements.addAll(_cachedElements);
+      _lastResponseWasCached = true;
+      final age = DateTime.now().difference(_cacheTimestamp!).inSeconds;
+      print('⚠️  FAP: Serving cached UI tree (${_elements.length} elements, age: ${age}s)');
+    } else {
+      // No fresh data and no valid cache
+      if (_hasCachedData && !_isCacheValid) {
+        print('⚠️  FAP: Cache expired (age: ${DateTime.now().difference(_cacheTimestamp!).inSeconds}s > ${_maxCacheAge.inSeconds}s)');
+      }
+      print('SemanticsIndexer: Indexed ${_elements.length} elements.');
+    }
+  }
+
+  bool get _isCacheValid {
+    if (_cacheTimestamp == null) return false;
+    return DateTime.now().difference(_cacheTimestamp!) < _maxCacheAge;
   }
 
   void _traverse(SemanticsNode node, Matrix4 parentTransform) {

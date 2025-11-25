@@ -1,0 +1,1476 @@
+[
+  {
+    "id": "fap-0",
+    "type": "_RawViewInternal",
+    "key": "[_DeprecatedRawViewKey FlutterView#14728]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 0,
+      "y": 0,
+      "w": 2085,
+      "h": 1120
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-1",
+    "type": "_RawViewInternal",
+    "key": "[_DeprecatedRawViewKey FlutterView#14728]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 0,
+      "y": 0,
+      "w": 2085,
+      "h": 1120
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-2",
+    "type": "RepaintBoundary",
+    "key": "[GlobalKey#84a5e]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 0,
+      "y": 0,
+      "w": 2085,
+      "h": 1120
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-3",
+    "type": "_OverlayEntryWidget",
+    "key": "[LabeledGlobalKey<_OverlayEntryWidgetState>#5791b]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 0,
+      "y": 56,
+      "w": 2085,
+      "h": 1064
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-4",
+    "type": "RepaintBoundary",
+    "key": "[GlobalKey#1fb39]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 0,
+      "y": 56,
+      "w": 2085,
+      "h": 1064
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-5",
+    "type": "TabWidget",
+    "key": "[#bb0e0]",
+    "label": "STORY BIBLE",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 0,
+      "y": 56,
+      "w": 413,
+      "h": 44
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-6",
+    "type": "TabWidget",
+    "key": "[#bb0e0]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 387,
+      "y": 70,
+      "w": 14,
+      "h": 14
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-7",
+    "type": "Positioned",
+    "key": "[#85723]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1,
+      "y": 102,
+      "w": 411,
+      "h": 48
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-8",
+    "type": "Positioned",
+    "key": "[#85723]",
+    "label": "Characters\nTab 1 of 4",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1,
+      "y": 102,
+      "w": 102.75,
+      "h": 48
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-9",
+    "type": "Positioned",
+    "key": "[#85723]",
+    "label": "World\nTab 2 of 4",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 103.75,
+      "y": 102,
+      "w": 102.75,
+      "h": 48
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-10",
+    "type": "Positioned",
+    "key": "[#85723]",
+    "label": "Plot\nTab 3 of 4",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 206.5,
+      "y": 102,
+      "w": 102.75,
+      "h": 48
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-11",
+    "type": "Positioned",
+    "key": "[#85723]",
+    "label": "Themes\nTab 4 of 4",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 309.25,
+      "y": 102,
+      "w": 102.75,
+      "h": 48
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-12",
+    "type": "Positioned",
+    "key": "[#85723]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1,
+      "y": 151,
+      "w": 411,
+      "h": 254
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-16",
+    "type": "Unknown",
+    "key": "",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1,
+      "y": 151,
+      "w": 411,
+      "h": 254
+    },
+    "actions": [
+      "scrollLeft"
+    ]
+  },
+  {
+    "id": "fap-13",
+    "type": "KeyedSubtree",
+    "key": "[Key <[<0>]>]",
+    "label": "No characters yet",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1,
+      "y": 151,
+      "w": 411,
+      "h": 254
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-14",
+    "type": "KeyedSubtree",
+    "key": "0",
+    "label": "Search characters...",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 18,
+      "y": 168,
+      "w": 279.7955207824707,
+      "h": 34
+    },
+    "actions": [
+      "tap",
+      "didGainAccessibilityFocus",
+      "didLoseAccessibilityFocus",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-15",
+    "type": "KeyedSubtree",
+    "key": "0",
+    "label": "Add",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 310.7955207824707,
+      "y": 169,
+      "w": 85.2044792175293,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-17",
+    "type": "MultiSplitView",
+    "key": "[#f0fc0]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 0,
+      "y": 406,
+      "w": 413,
+      "h": 10
+    },
+    "actions": [
+      "tap",
+      "scrollUp",
+      "scrollDown"
+    ]
+  },
+  {
+    "id": "fap-18",
+    "type": "TabWidget",
+    "key": "[#f8865]",
+    "label": "PROJECT EXPLORER",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 0,
+      "y": 416,
+      "w": 206.5,
+      "h": 44
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-19",
+    "type": "TabWidget",
+    "key": "[#f8865]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 180.5,
+      "y": 430,
+      "w": 14,
+      "h": 14
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-20",
+    "type": "TabWidget",
+    "key": "[#7bc4b]",
+    "label": "RESEARCH",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 206.5,
+      "y": 416,
+      "w": 206.5,
+      "h": 44
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-21",
+    "type": "Positioned",
+    "key": "[#3c9ab]",
+    "label": "No Project Open",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 148.43435668945312,
+      "y": 774.5,
+      "w": 116.13128662109375,
+      "h": 20
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-22",
+    "type": "Positioned",
+    "key": "[#3c9ab]",
+    "label": "Open or create a project\nto get started",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 134.6259765625,
+      "y": 802.5,
+      "w": 143.748046875,
+      "h": 36
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-23",
+    "type": "MultiSplitView",
+    "key": "[#e0c74]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 413,
+      "y": 56,
+      "w": 10,
+      "h": 1032
+    },
+    "actions": [
+      "tap",
+      "scrollLeft",
+      "scrollRight"
+    ]
+  },
+  {
+    "id": "fap-24",
+    "type": "TabWidget",
+    "key": "[#d5100]",
+    "label": "EDITOR",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 423,
+      "y": 56,
+      "w": 413,
+      "h": 44
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-25",
+    "type": "TabWidget",
+    "key": "[#d5100]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 810,
+      "y": 70,
+      "w": 14,
+      "h": 14
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-26",
+    "type": "TabWidget",
+    "key": "[#6dffd]",
+    "label": "MINDMAP",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 836,
+      "y": 56,
+      "w": 413,
+      "h": 44
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-27",
+    "type": "TabWidget",
+    "key": "[#8908b]",
+    "label": "RESEARCH",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1249,
+      "y": 56,
+      "w": 413,
+      "h": 44
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-28",
+    "type": "Positioned",
+    "key": "[#ee289]",
+    "label": "Untitled Project\nUntitled Document\n0 words\nNo file open",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 423,
+      "y": 101,
+      "w": 1239,
+      "h": 777
+    },
+    "actions": [
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-29",
+    "type": "Positioned",
+    "key": "[#ee289]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 435,
+      "y": 101,
+      "w": 1215,
+      "h": 41.5
+    },
+    "actions": [
+      "scrollLeft",
+      "scrollToOffset"
+    ]
+  },
+  {
+    "id": "fap-30",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 435,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-31",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 467,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-32",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 499,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-33",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 531,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-34",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 580,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-35",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 612,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-36",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 644,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-37",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 676,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-38",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 725,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-39",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 757,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-40",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 789,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-41",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 821,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-42",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 870,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-43",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 902,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-44",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 934,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-45",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 966,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-46",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "No file open",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1043,
+      "y": 112.25,
+      "w": 76.8994140625,
+      "h": 19
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-47",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1156.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-48",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1188.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-49",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1224.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-50",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1260.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-51",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1309.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-52",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1345.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-53",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1381.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-54",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1421.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-55",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1470.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-56",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1519.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-57",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1555.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-58",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1591.8994140625,
+      "y": 105.75,
+      "w": 32,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-59",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#33040]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1627.8994140625,
+      "y": 105.75,
+      "w": 22.1005859375,
+      "h": 32
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-60",
+    "type": "CustomPaint",
+    "key": "[GlobalKey#9099e]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 503,
+      "y": 215,
+      "w": 1079,
+      "h": 595
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-63",
+    "type": "Unknown",
+    "key": "",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 503,
+      "y": 215,
+      "w": 1079,
+      "h": 595
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-61",
+    "type": "IgnorePointer",
+    "key": "[GlobalKey#2b8f3]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 503,
+      "y": 215,
+      "w": 1079,
+      "h": 595
+    },
+    "actions": [
+      "scrollLeft",
+      "scrollRight",
+      "scrollUp",
+      "scrollDown"
+    ]
+  },
+  {
+    "id": "fap-81",
+    "type": "_SuperTextLayout",
+    "key": "[GlobalKey#45a45]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 746.5,
+      "y": 239,
+      "w": 592,
+      "h": 29
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-64",
+    "type": "MultiSplitView",
+    "key": "[#6dca9]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 423,
+      "y": 878,
+      "w": 1239,
+      "h": 10
+    },
+    "actions": [
+      "tap",
+      "scrollUp",
+      "scrollDown"
+    ]
+  },
+  {
+    "id": "fap-65",
+    "type": "TabWidget",
+    "key": "[#e0e0b]",
+    "label": "QUICK NOTES",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 423,
+      "y": 888,
+      "w": 1239,
+      "h": 44
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-66",
+    "type": "TabWidget",
+    "key": "[#e0e0b]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1622,
+      "y": 902,
+      "w": 14,
+      "h": 14
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-67",
+    "type": "TabWidget",
+    "key": "[#e0e0b]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1636,
+      "y": 902,
+      "w": 14,
+      "h": 14
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-68",
+    "type": "Positioned",
+    "key": "[#839ed]",
+    "label": "Quick notes and ideas...",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 440,
+      "y": 950,
+      "w": 1205,
+      "h": 121
+    },
+    "actions": [
+      "tap",
+      "didGainAccessibilityFocus",
+      "didLoseAccessibilityFocus",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-69",
+    "type": "MultiSplitView",
+    "key": "[#e0c74]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1662,
+      "y": 56,
+      "w": 10,
+      "h": 1032
+    },
+    "actions": [
+      "tap",
+      "scrollLeft",
+      "scrollRight"
+    ]
+  },
+  {
+    "id": "fap-70",
+    "type": "TabWidget",
+    "key": "[#d75ba]",
+    "label": "AI ASSISTANT",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1672,
+      "y": 56,
+      "w": 137.66666666666674,
+      "h": 44
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-71",
+    "type": "TabWidget",
+    "key": "[#d75ba]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1783.6666666666667,
+      "y": 70,
+      "w": 14,
+      "h": 14
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-72",
+    "type": "TabWidget",
+    "key": "[#a49ae]",
+    "label": "VERSION HISTORY",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1809.6666666666667,
+      "y": 56,
+      "w": 137.66666666666674,
+      "h": 44
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-73",
+    "type": "TabWidget",
+    "key": "[#36c8c]",
+    "label": "LOCATIONS",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1947.3333333333333,
+      "y": 56,
+      "w": 137.66666666666674,
+      "h": 44
+    },
+    "actions": [
+      "tap"
+    ]
+  },
+  {
+    "id": "fap-74",
+    "type": "LLMDock",
+    "key": "no-conversation",
+    "label": "No Project Open",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1804.379898071289,
+      "y": 611.5,
+      "w": 148.24020385742188,
+      "h": 26
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-75",
+    "type": "LLMDock",
+    "key": "no-conversation",
+    "label": "Open a project to start a conversation\nwith the AI assistant",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1757.927490234375,
+      "y": 645.5,
+      "w": 241.14501953125,
+      "h": 40
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-76",
+    "type": "KeyedSubtree",
+    "key": "[GlobalKey#8348d]",
+    "label": "0 words",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 40,
+      "y": 1095.75,
+      "w": 46.87890625,
+      "h": 17
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-77",
+    "type": "KeyedSubtree",
+    "key": "[GlobalKey#8348d]",
+    "label": "All changes saved",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 139.87890625,
+      "y": 1096.25,
+      "w": 97.6748046875,
+      "h": 16
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-78",
+    "type": "KeyedSubtree",
+    "key": "[GlobalKey#8348d]",
+    "label": "Dockable Layout",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 1975.033203125,
+      "y": 1096.25,
+      "w": 89.966796875,
+      "h": 16
+    },
+    "actions": []
+  },
+  {
+    "id": "fap-79",
+    "type": "LayoutId",
+    "key": "_ScaffoldSlot.floatingActionButton",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 2029,
+      "y": 1064,
+      "w": 40,
+      "h": 40
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  },
+  {
+    "id": "fap-80",
+    "type": "KeyedSubtree",
+    "key": "[GlobalKey#8fbd5]",
+    "label": "",
+    "value": "",
+    "hint": "",
+    "metadata": {},
+    "rect": {
+      "x": 2029,
+      "y": 1064,
+      "w": 40,
+      "h": 40
+    },
+    "actions": [
+      "tap",
+      "focus"
+    ]
+  }
+]

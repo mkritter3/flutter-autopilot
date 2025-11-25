@@ -52,7 +52,15 @@ class FapRpcHandlerImpl implements FapRpcHandler {
     peer.registerMethod('getTree', ([json_rpc.Parameters? params]) {
       _indexer.reindex();
       final data = _indexer.elements.values.map((e) => e.toJson()).toList();
-      return _compressIfNeeded(data);
+
+      // Add cache metadata
+      final response = {
+        'elements': data,
+        'cached': _indexer.lastResponseWasCached,
+        'cacheAgeSeconds': _indexer.cacheAgeSeconds,
+      };
+
+      return _compressIfNeeded(response);
     });
 
     peer.registerMethod('getTreeDiff', ([json_rpc.Parameters? params]) {

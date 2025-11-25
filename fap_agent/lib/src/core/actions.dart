@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/rendering.dart';
 
@@ -14,9 +15,11 @@ class ActionExecutor {
   }) async {
     final center = globalRect.center;
     final pointer = _nextPointerId();
-    final kind = PointerDeviceKind.touch;
+    final kind = (Platform.isMacOS || Platform.isWindows || Platform.isLinux) 
+        ? PointerDeviceKind.mouse 
+        : PointerDeviceKind.touch;
 
-    print('ActionExecutor.tap: $center');
+    print('ActionExecutor.tap: $center (kind: $kind)');
 
     _dispatchPointerEvent(
       PointerDownEvent(
@@ -51,8 +54,10 @@ class ActionExecutor {
 
   Future<Map<String, dynamic>> tapAt(Offset position) async {
     final pointer = _nextPointerId();
-    final kind = PointerDeviceKind.touch;
-    print('ActionExecutor.tapAt: $position');
+    final kind = (Platform.isMacOS || Platform.isWindows || Platform.isLinux) 
+        ? PointerDeviceKind.mouse 
+        : PointerDeviceKind.touch;
+    print('ActionExecutor.tapAt: $position (kind: $kind)');
 
     // Down
     _dispatchPointerEvent(
@@ -112,7 +117,9 @@ class ActionExecutor {
       PointerDownEvent(
         position: center,
         pointer: pointer,
-        kind: PointerDeviceKind.touch, // Touch is often better for long press
+        kind: (Platform.isMacOS || Platform.isWindows || Platform.isLinux) 
+            ? PointerDeviceKind.mouse 
+            : PointerDeviceKind.touch, // Touch is often better for long press
         buttons: kPrimaryButton,
       ),
     );
@@ -125,7 +132,9 @@ class ActionExecutor {
       PointerUpEvent(
         position: center,
         pointer: pointer,
-        kind: PointerDeviceKind.touch,
+        kind: (Platform.isMacOS || Platform.isWindows || Platform.isLinux) 
+            ? PointerDeviceKind.mouse 
+            : PointerDeviceKind.touch,
         buttons: 0,
       ),
     );
@@ -159,7 +168,9 @@ class ActionExecutor {
     Duration duration = const Duration(milliseconds: 300),
   }) async {
     final pointer = _nextPointerId();
-    final kind = PointerDeviceKind.touch;
+    final kind = (Platform.isMacOS || Platform.isWindows || Platform.isLinux) 
+        ? PointerDeviceKind.mouse 
+        : PointerDeviceKind.touch;
     print('ActionExecutor.drag: $start -> $end');
 
     // Down

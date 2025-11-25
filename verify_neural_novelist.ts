@@ -1,6 +1,7 @@
 import WebSocket from 'ws';
 import { v4 as uuidv4 } from 'uuid';
 import * as zlib from 'zlib';
+import fs from 'fs';
 
 export interface FapConfig {
     url?: string;
@@ -115,10 +116,17 @@ export class FapClient {
         }).then((result: any) => {
             // Handle Compression
             if (result && typeof result === 'object' && result.compressed && result.data) {
+                console.log('Received compressed data');
                 const buffer = Buffer.from(result.data, 'base64');
                 const decompressed = zlib.gunzipSync(buffer);
-                return JSON.parse(decompressed.toString('utf-8'));
+                const parsed = JSON.parse(decompressed.toString('utf-8'));
+                console.log('Decompressed type:', typeof parsed, 'Is Array:', Array.isArray(parsed));
+                if (!Array.isArray(parsed)) {
+                    console.log('Parsed content:', JSON.stringify(parsed).substring(0, 200));
+                }
+                return parsed;
             }
+            console.log('Received raw result type:', typeof result, 'Is Array:', Array.isArray(result));
             return result;
         });
     }
@@ -132,31 +140,23 @@ export class FapClient {
     }
 
     async getTree(): Promise<FapElement[]> {
-        try {
-            const diff = await this.request<any>('getTreeDiff');
-            this._applyDiff(diff);
-            return Array.from(this._elementsCache.values());
-        } catch (e) {
-            // Fallback to full tree if diff fails (e.g. old agent)
-            const response = await this.request<any>('getTree');
+        console.log('Calling getTree RPC...');
+        const response: any = await this.request('getTree');
 
-            // Handle new response format with cache metadata
-            let elements: FapElement[];
-            if (response && typeof response === 'object' && response.elements) {
-                // New format with metadata
-                elements = response.elements;
-                if (response.cached) {
-                    console.log(`ℹ️  FAP: Received cached UI tree (age: ${response.cacheAgeSeconds}s)`);
-                }
-            } else {
-                // Old format (backward compatibility)
-                elements = response as FapElement[];
-            }
-
-            this._elementsCache.clear();
-            elements.forEach(e => this._elementsCache.set(e.id.toString(), e));
-            return elements;
+        let elements: FapElement[] = [];
+        if (Array.isArray(response)) {
+            elements = response;
+        } else if (response && response.elements && Array.isArray(response.elements)) {
+            elements = response.elements;
+        } else {
+            console.error('Unexpected getTree response format:', response);
+            return [];
         }
+
+        console.log(`getTree RPC returned ${elements.length} elements`);
+        this._elementsCache.clear();
+        elements.forEach(e => this._elementsCache.set(e.id.toString(), e));
+        return elements;
     }
 
     private _applyDiff(diff: { added: FapElement[], removed: string[], updated: FapElement[] }) {
@@ -266,3 +266,52 @@ export class FapClient {
         return this.request('getLogs');
     }
 }
+
+async function main() {
+    const client = new FapClient({
+        url: 'ws://127.0.0.1:9001',
+        secretToken: 'dev-test-token',
+    });
+
+    try {
+        console.log('Connecting to FAP Agent...');
+        await client.connect();
+        console.log('Connected!');
+
+        // Wait for semantics to warm up
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // 1. Get Semantics Tree with retry
+        console.log('Getting Semantics Tree...');
+        let tree = await client.getTree();
+        let retries = 5;
+        while (tree.length === 0 && retries > 0) {
+            console.log(`Tree empty, retrying... (${retries})`);
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            tree = await client.getTree();
+            retries--;
+        }
+
+        console.log('Semantics Tree Root:', tree.length > 0 ? tree[0].id : 'Empty Tree');
+        console.log(`Total elements: ${tree.length}`);
+
+        // Dump tree to file
+        // 2. Get Writing Studio Tree (Directly)
+        console.log('Getting Writing Studio Tree...');
+        const studioTree = await client.getTree();
+        console.log(`Studio tree has ${studioTree.length} elements`);
+        fs.writeFileSync('tree_dump_studio.json', JSON.stringify(studioTree, null, 2));
+        console.log('Studio tree dumped to tree_dump_studio.json');
+
+        // 3. Find Editor and Enter Text
+        console.log('Ready to find editor...');
+        // TODO: Implement text entry once we see the tree structure
+
+    } catch (error) {
+        console.error('Error:', error);
+    } finally {
+        client.disconnect();
+    }
+}
+
+main();
