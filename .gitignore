@@ -27,3 +27,6 @@ test_*.mjs
 
 # Node
 node_modules/
+
+# Claude Code local settings (keep skills and commands)
+.claude/settings.local.json
