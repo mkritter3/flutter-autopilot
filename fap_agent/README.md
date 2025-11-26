@@ -4,7 +4,17 @@ The core Dart package for the Flutter Agent Protocol (FAP). This package embeds 
 
 ## Installation
 
-Add to `pubspec.yaml`:
+Add to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  fap_agent:
+    git:
+      url: https://github.com/mkritter3/flutter-agent-protocol.git
+      path: fap_agent
+```
+
+For local development, you can use a path dependency instead:
 
 ```yaml
 dependencies:
