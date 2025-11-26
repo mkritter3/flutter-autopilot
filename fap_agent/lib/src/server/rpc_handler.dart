@@ -17,6 +17,8 @@ import '../core/recorder.dart';
 import '../core/widget_inspector_bridge.dart';
 import '../core/text_input_simulator.dart';
 import '../core/flutter_controller.dart';
+import '../handlers/rich_text_handler.dart';
+import '../handlers/menu_discovery_handler.dart';
 
 abstract class FapRpcHandler {
   FapAgent get agent;
@@ -755,6 +757,262 @@ class FapRpcHandlerImpl implements FapRpcHandler {
         };
       } catch (e) {
         throw json_rpc.RpcException(400, 'Find scroll controllers error: $e');
+      }
+    });
+
+    // ========================================
+    // RICH TEXT EDITOR SUPPORT
+    // ========================================
+
+    final richTextHandler = RichTextHandler.instance;
+
+    // Discover all rich text editors in the widget tree
+    peer.registerMethod('discoverRichTextEditors', ([json_rpc.Parameters? params]) {
+      try {
+        final editors = richTextHandler.discoverEditors();
+        return {
+          'count': editors.length,
+          'editors': editors.map((e) => e.toJson()).toList(),
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Rich text discovery error: $e');
+      }
+    });
+
+    // Insert text into rich text editor at cursor position
+    peer.registerMethod('richText.insertText', (json_rpc.Parameters params) async {
+      try {
+        final editorId = params['editorId'].asInt;
+        final text = params['text'].asString;
+        return await richTextHandler.insertText(editorId, text);
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Rich text insert error: $e');
+      }
+    });
+
+    // Get document content from rich text editor
+    peer.registerMethod('richText.getContent', (json_rpc.Parameters params) async {
+      try {
+        final editorId = params['editorId'].asInt;
+        return await richTextHandler.getContent(editorId);
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Rich text content error: $e');
+      }
+    });
+
+    // Get selection state from rich text editor
+    peer.registerMethod('richText.getSelection', (json_rpc.Parameters params) async {
+      try {
+        final editorId = params['editorId'].asInt;
+        return await richTextHandler.getSelection(editorId);
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Rich text selection error: $e');
+      }
+    });
+
+    // Apply formatting to rich text editor selection
+    peer.registerMethod('richText.applyFormat', (json_rpc.Parameters params) async {
+      try {
+        final editorId = params['editorId'].asInt;
+        final format = params['format'].asString;
+        return await richTextHandler.applyFormat(editorId, format);
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Rich text format error: $e');
+      }
+    });
+
+    // Clear rich text editor cache
+    peer.registerMethod('richText.clearCache', ([json_rpc.Parameters? params]) {
+      richTextHandler.clearCache();
+      return {'status': 'cache_cleared'};
+    });
+
+    // Enter text via IME delta simulation (for rich editors)
+    peer.registerMethod('enterRichText', (json_rpc.Parameters params) async {
+      try {
+        final text = params['text'].asString;
+        final useDelta = params.asMap.containsKey('useDelta')
+            ? params['useDelta'].asBool
+            : true;
+        final simulator = TextInputSimulator.instance;
+
+        if (!simulator.hasActiveInput) {
+          return {
+            'success': false,
+            'error': 'No active text input. Tap the rich text editor first.',
+            'hint': 'Focus the editor by tapping it, then call enterRichText.',
+          };
+        }
+
+        if (useDelta) {
+          await simulator.sendTextDelta(text);
+        } else {
+          await simulator.typeText(text);
+        }
+
+        return {
+          'success': true,
+          'text': text,
+          'method': useDelta ? 'delta' : 'typing',
+          'clientId': simulator.currentClientId,
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Enter rich text error: $e');
+      }
+    });
+
+    // Replace text range via IME delta simulation
+    peer.registerMethod('replaceRichText', (json_rpc.Parameters params) async {
+      try {
+        final newText = params['text'].asString;
+        final start = params['start'].asInt;
+        final end = params['end'].asInt;
+        final simulator = TextInputSimulator.instance;
+
+        if (!simulator.hasActiveInput) {
+          return {
+            'success': false,
+            'error': 'No active text input. Tap the rich text editor first.',
+          };
+        }
+
+        await simulator.sendReplacementDelta(newText, start, end);
+
+        return {
+          'success': true,
+          'text': newText,
+          'range': {'start': start, 'end': end},
+          'clientId': simulator.currentClientId,
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Replace rich text error: $e');
+      }
+    });
+
+    // ========================================
+    // MENU / OVERLAY / DRAWER DISCOVERY
+    // ========================================
+
+    final menuHandler = MenuDiscoveryHandler.instance;
+
+    // Get current overlay state
+    peer.registerMethod('getOverlayState', ([json_rpc.Parameters? params]) {
+      try {
+        final state = menuHandler.getCurrentOverlayState();
+        return state.toJson();
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Get overlay state error: $e');
+      }
+    });
+
+    // Wait for overlay to appear
+    peer.registerMethod('waitForOverlay', (json_rpc.Parameters params) async {
+      try {
+        final timeoutMs = params.asMap.containsKey('timeoutMs')
+            ? params['timeoutMs'].asInt
+            : 5000;
+        final pollIntervalMs = params.asMap.containsKey('pollIntervalMs')
+            ? params['pollIntervalMs'].asInt
+            : 50;
+
+        final result = await menuHandler.waitForOverlay(
+          timeoutMs: timeoutMs,
+          pollIntervalMs: pollIntervalMs,
+        );
+
+        return result.toJson();
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Wait for overlay error: $e');
+      }
+    });
+
+    // Get only overlay elements from the tree
+    peer.registerMethod('getOverlayElements', ([json_rpc.Parameters? params]) {
+      try {
+        _indexer.reindex();
+        final overlayElements = _indexer.elements.values
+            .where((e) => e.isOverlayElement)
+            .map((e) => e.toJson())
+            .toList();
+        return {
+          'count': overlayElements.length,
+          'elements': overlayElements,
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Get overlay elements error: $e');
+      }
+    });
+
+    // Get drawer state
+    peer.registerMethod('getDrawerState', ([json_rpc.Parameters? params]) {
+      try {
+        return controller.getDrawerState();
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Get drawer state error: $e');
+      }
+    });
+
+    // Discover menu triggers (hamburger icons, dropdown buttons, etc.)
+    peer.registerMethod('discoverMenuTriggers', ([json_rpc.Parameters? params]) {
+      try {
+        final triggers = menuHandler.discoverMenuTriggers();
+        return {
+          'count': triggers.length,
+          'triggers': triggers.map((t) => t.toJson()).toList(),
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Discover menu triggers error: $e');
+      }
+    });
+
+    // Open drawer programmatically
+    peer.registerMethod('openDrawer', (json_rpc.Parameters params) async {
+      try {
+        final isEndDrawer = params.asMap.containsKey('endDrawer')
+            ? params['endDrawer'].asBool
+            : false;
+        return menuHandler.openDrawer(endDrawer: isEndDrawer);
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Open drawer error: $e');
+      }
+    });
+
+    // Close drawer programmatically
+    peer.registerMethod('closeDrawer', ([json_rpc.Parameters? params]) async {
+      try {
+        return await menuHandler.closeDrawer();
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Close drawer error: $e');
+      }
+    });
+
+    // Find rich text editors via FlutterController
+    peer.registerMethod('findRichTextEditors', ([json_rpc.Parameters? params]) {
+      try {
+        return {
+          'editors': controller.findRichTextEditors(),
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Find rich text editors error: $e');
+      }
+    });
+
+    // Get elements by UI category
+    peer.registerMethod('getElementsByCategory', (json_rpc.Parameters params) {
+      try {
+        final category = params['category'].asString;
+        _indexer.reindex();
+        final elements = _indexer.elements.values
+            .where((e) => e.uiCategory == category)
+            .map((e) => e.toJson())
+            .toList();
+        return {
+          'category': category,
+          'count': elements.length,
+          'elements': elements,
+        };
+      } catch (e) {
+        throw json_rpc.RpcException(500, 'Get by category error: $e');
       }
     });
   }

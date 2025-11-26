@@ -343,6 +343,101 @@ class TextInputSimulator {
     await selectRange(0, text.length);
   }
 
+  /// Send text using TextEditingDelta (for rich editors like SuperEditor)
+  ///
+  /// This is more compatible with modern editors that use delta-based input
+  /// rather than full state replacement.
+  Future<void> sendTextDelta(String text) async {
+    if (_currentClientId == null) {
+      throw StateError(
+          'No active text input. Tap a text field first. '
+          'Current client ID: $_currentClientId');
+    }
+
+    // Get current state
+    final currentText = _currentEditingState['text'] as String? ?? '';
+    final selectionBase = _currentEditingState['selectionBase'] as int? ?? currentText.length;
+    final selectionExtent = _currentEditingState['selectionExtent'] as int? ?? currentText.length;
+
+    // Calculate insertion point (handle selection)
+    final insertionStart = selectionBase < selectionExtent ? selectionBase : selectionExtent;
+    final insertionEnd = selectionBase > selectionExtent ? selectionBase : selectionExtent;
+
+    debugPrint('TextInputSimulator: sendTextDelta "$text" at $insertionStart-$insertionEnd');
+
+    // Build delta insertion message
+    // TextEditingDelta format for insertion
+    final deltaMessage = <String, dynamic>{
+      'deltas': [
+        {
+          'oldText': currentText,
+          'deltaText': text,
+          'deltaStart': insertionStart,
+          'deltaEnd': insertionEnd,
+          'selectionBase': insertionStart + text.length,
+          'selectionExtent': insertionStart + text.length,
+          'composingBase': -1,
+          'composingExtent': -1,
+        }
+      ]
+    };
+
+    // Send via updateEditingStateWithDeltas
+    await _sendPlatformMessage(
+      'TextInputClient.updateEditingStateWithDeltas',
+      <dynamic>[_currentClientId, deltaMessage],
+    );
+
+    // Update local tracking
+    final newText = currentText.substring(0, insertionStart) +
+        text +
+        currentText.substring(insertionEnd);
+    _currentEditingState['text'] = newText;
+    _currentEditingState['selectionBase'] = insertionStart + text.length;
+    _currentEditingState['selectionExtent'] = insertionStart + text.length;
+
+    debugPrint('TextInputSimulator: Delta sent, new text length: ${newText.length}');
+  }
+
+  /// Send a replacement delta (replaces text in a range)
+  Future<void> sendReplacementDelta(String newText, int start, int end) async {
+    if (_currentClientId == null) {
+      throw StateError('No active text input. Tap a text field first.');
+    }
+
+    final currentText = _currentEditingState['text'] as String? ?? '';
+    final safeStart = start.clamp(0, currentText.length);
+    final safeEnd = end.clamp(0, currentText.length);
+
+    final deltaMessage = <String, dynamic>{
+      'deltas': [
+        {
+          'oldText': currentText,
+          'deltaText': newText,
+          'deltaStart': safeStart,
+          'deltaEnd': safeEnd,
+          'selectionBase': safeStart + newText.length,
+          'selectionExtent': safeStart + newText.length,
+          'composingBase': -1,
+          'composingExtent': -1,
+        }
+      ]
+    };
+
+    await _sendPlatformMessage(
+      'TextInputClient.updateEditingStateWithDeltas',
+      <dynamic>[_currentClientId, deltaMessage],
+    );
+
+    // Update local tracking
+    final resultText = currentText.substring(0, safeStart) +
+        newText +
+        currentText.substring(safeEnd);
+    _currentEditingState['text'] = resultText;
+    _currentEditingState['selectionBase'] = safeStart + newText.length;
+    _currentEditingState['selectionExtent'] = safeStart + newText.length;
+  }
+
   /// Delete selected text or character at cursor
   Future<void> delete() async {
     if (_currentClientId == null) {

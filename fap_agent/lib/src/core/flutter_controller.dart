@@ -768,6 +768,72 @@ class FlutterController {
         };
     }
   }
+
+  /// Get drawer state via ScaffoldState
+  Map<String, dynamic> getDrawerState() {
+    final scaffolds = findByWidgetType('Scaffold', exact: false);
+
+    for (final scaffold in scaffolds) {
+      if (scaffold is StatefulElement) {
+        try {
+          final dynamic state = scaffold.state;
+
+          // ScaffoldState exposes isDrawerOpen and isEndDrawerOpen
+          final isDrawerOpen = state.isDrawerOpen as bool? ?? false;
+          final isEndDrawerOpen = state.isEndDrawerOpen as bool? ?? false;
+
+          return {
+            'hasScaffold': true,
+            'isDrawerOpen': isDrawerOpen,
+            'isEndDrawerOpen': isEndDrawerOpen,
+            'anyDrawerOpen': isDrawerOpen || isEndDrawerOpen,
+          };
+        } catch (e) {
+          debugPrint('FlutterController: Error reading ScaffoldState: $e');
+        }
+      }
+    }
+
+    return {
+      'hasScaffold': scaffolds.isNotEmpty,
+      'isDrawerOpen': false,
+      'isEndDrawerOpen': false,
+      'anyDrawerOpen': false,
+    };
+  }
+
+  /// Find rich text editors in the widget tree
+  List<Map<String, dynamic>> findRichTextEditors() {
+    final results = <Map<String, dynamic>>[];
+
+    findElements((element) {
+      final typeName = element.widget.runtimeType.toString();
+
+      if (typeName.contains('SuperEditor') ||
+          typeName.contains('SuperTextField') ||
+          typeName.contains('SuperTextLayout') ||
+          typeName.contains('QuillEditor')) {
+        final bounds = getElementBounds(element);
+
+        results.add({
+          'hashCode': element.hashCode,
+          'type': typeName,
+          'bounds': bounds != null
+              ? {
+                  'x': bounds.left,
+                  'y': bounds.top,
+                  'w': bounds.width,
+                  'h': bounds.height,
+                }
+              : null,
+        });
+      }
+
+      return false; // Continue searching
+    });
+
+    return results;
+  }
 }
 
 /// Information about a found State object

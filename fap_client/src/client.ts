@@ -386,4 +386,89 @@ export class FapClient {
     async getPlaceholders(): Promise<{ count: number; placeholders: FapElement[] }> {
         return this.request('getPlaceholders');
     }
+
+    // ==========================================
+    // Generic RPC Call (for new/custom methods)
+    // ==========================================
+
+    /**
+     * Make a generic RPC call to the FAP agent.
+     * Use this for new methods not yet exposed via typed methods.
+     */
+    async call(method: string, params: Record<string, any> = {}): Promise<any> {
+        return this.request(method, params);
+    }
+
+    // ==========================================
+    // Rich Text Editor Support
+    // ==========================================
+
+    async discoverRichTextEditors(): Promise<{ count: number; editors: any[] }> {
+        return this.request('discoverRichTextEditors');
+    }
+
+    async enterRichText(text: string, useDelta: boolean = true): Promise<any> {
+        return this.request('enterRichText', { text, useDelta });
+    }
+
+    async richTextInsertText(editorId: number, text: string): Promise<any> {
+        return this.request('richText.insertText', { editorId, text });
+    }
+
+    async richTextGetContent(editorId: number): Promise<any> {
+        return this.request('richText.getContent', { editorId });
+    }
+
+    async richTextGetSelection(editorId: number): Promise<any> {
+        return this.request('richText.getSelection', { editorId });
+    }
+
+    async richTextApplyFormat(editorId: number, format: string): Promise<any> {
+        return this.request('richText.applyFormat', { editorId, format });
+    }
+
+    // ==========================================
+    // Menu / Overlay / Drawer Discovery
+    // ==========================================
+
+    async getOverlayState(): Promise<any> {
+        return this.request('getOverlayState');
+    }
+
+    async waitForOverlay(timeoutMs: number = 5000, pollIntervalMs: number = 50): Promise<any> {
+        return this.request('waitForOverlay', { timeoutMs, pollIntervalMs });
+    }
+
+    async getOverlayElements(): Promise<{ count: number; elements: any[] }> {
+        return this.request('getOverlayElements');
+    }
+
+    async getDrawerState(): Promise<{
+        hasScaffold: boolean;
+        isDrawerOpen: boolean;
+        isEndDrawerOpen: boolean;
+        anyDrawerOpen: boolean;
+    }> {
+        return this.request('getDrawerState');
+    }
+
+    async discoverMenuTriggers(): Promise<{ count: number; triggers: any[] }> {
+        return this.request('discoverMenuTriggers');
+    }
+
+    async openDrawer(endDrawer: boolean = false): Promise<any> {
+        return this.request('openDrawer', { endDrawer });
+    }
+
+    async closeDrawer(): Promise<any> {
+        return this.request('closeDrawer');
+    }
+
+    async getElementsByCategory(category: string): Promise<{ category: string; count: number; elements: any[] }> {
+        return this.request('getElementsByCategory', { category });
+    }
+
+    async findRichTextEditors(): Promise<{ editors: any[] }> {
+        return this.request('findRichTextEditors');
+    }
 }

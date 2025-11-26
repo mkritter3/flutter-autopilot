@@ -154,6 +154,67 @@ class FapElement {
     return null;
   }
 
+  /// UI category for classification
+  String get uiCategory {
+    final typeName = type ?? '';
+
+    // Overlay/Modal types
+    if (typeName.contains('PopupMenu') || typeName.contains('DropdownMenu')) {
+      return 'menu';
+    }
+    if (typeName.contains('MenuItem') || typeName.contains('MenuItemButton')) {
+      return 'menuItem';
+    }
+    if (typeName.contains('Drawer') || typeName.contains('NavigationDrawer')) {
+      return 'drawer';
+    }
+    if (typeName.contains('BottomSheet')) {
+      return 'bottomSheet';
+    }
+    if (typeName.contains('Dialog') || typeName.contains('AlertDialog')) {
+      return 'dialog';
+    }
+    if (typeName.contains('Snackbar') || typeName.contains('MaterialBanner')) {
+      return 'notification';
+    }
+
+    // Rich text editors
+    if (typeName.contains('SuperEditor') ||
+        typeName.contains('SuperTextField') ||
+        typeName.contains('SuperTextLayout') ||
+        typeName.contains('QuillEditor')) {
+      return 'richEditor';
+    }
+
+    // Standard text input
+    if (typeName.contains('TextField') || typeName.contains('TextFormField')) {
+      return 'textField';
+    }
+
+    // Buttons
+    if (typeName.contains('Button') ||
+        typeName.contains('InkWell') ||
+        typeName.contains('GestureDetector')) {
+      return 'button';
+    }
+
+    return 'standard';
+  }
+
+  /// Whether this element is from an overlay (menu, dialog, drawer, etc.)
+  bool get isOverlayElement {
+    return metadata['_isOverlay'] == 'true';
+  }
+
+  /// Type of overlay if this is an overlay element
+  String? get overlayType => metadata['_overlayType'];
+
+  /// Whether this is a rich text editor
+  bool get isRichTextEditor {
+    final cat = uiCategory;
+    return cat == 'richEditor';
+  }
+
   Map<String, dynamic> toJson() {
     return {
       'id': id,
@@ -174,6 +235,11 @@ class FapElement {
       'isEnabled': isEnabled,
       'isPlaceholder': isPlaceholder,
       'placeholderReason': placeholderReason,
+      // New fields for overlay/menu discovery
+      'uiCategory': uiCategory,
+      'isOverlay': isOverlayElement,
+      'overlayType': overlayType,
+      'isRichTextEditor': isRichTextEditor,
     };
   }
 
@@ -301,6 +367,14 @@ class SemanticsIndexer {
       if (addedCount > 0) {
         debugPrint('SemanticsIndexer: Discovered $addedCount excluded elements');
       }
+    }
+
+    // 4. Discover overlay elements (menus, dialogs, drawers when open)
+    final overlayBeforeCount = _elements.length;
+    _discoverOverlayElements();
+    final overlayAddedCount = _elements.length - overlayBeforeCount;
+    if (overlayAddedCount > 0) {
+      debugPrint('SemanticsIndexer: Discovered $overlayAddedCount overlay elements');
     }
 
     // 4. Server-side caching logic
@@ -484,6 +558,44 @@ class SemanticsIndexer {
     element.visitChildren((child) => _traverseForExcluded(child, covered));
   }
 
+  /// Discover overlay elements (menu items, dialogs, drawers when open)
+  void _discoverOverlayElements() {
+    final rootElement = WidgetsBinding.instance.rootElement;
+    if (rootElement == null) return;
+
+    // Build set of elements already covered
+    final coveredHashes = <int>{};
+    for (final fapEl in _elements.values) {
+      if (fapEl.widgetElement != null) {
+        coveredHashes.add(fapEl.widgetElement!.hashCode);
+      }
+    }
+
+    void visit(Element element) {
+      if (coveredHashes.contains(element.hashCode)) {
+        element.visitChildren(visit);
+        return;
+      }
+
+      final typeName = element.widget.runtimeType.toString();
+
+      // Check for overlay-specific widget types
+      if (_isOverlayWidgetType(typeName)) {
+        final fapElement = _createElementBasedFapElement(element);
+        if (fapElement != null) {
+          // Mark as overlay element
+          fapElement.metadata['_isOverlay'] = 'true';
+          fapElement.metadata['_overlayType'] = _classifyOverlayType(typeName);
+          _elements[fapElement.id] = fapElement;
+        }
+      }
+
+      element.visitChildren(visit);
+    }
+
+    visit(rootElement);
+  }
+
   bool _isInsideExcludeSemantics(Element element) {
     bool found = false;
     element.visitAncestorElements((ancestor) {
@@ -511,7 +623,60 @@ class SemanticsIndexer {
            type.contains('PopupMenu') ||
            type.contains('DropdownButton') ||
            type.contains('IconButton') ||
-           type.contains('FloatingActionButton');
+           type.contains('FloatingActionButton') ||
+           // Rich text editors
+           type.contains('SuperEditor') ||
+           type.contains('SuperTextField') ||
+           type.contains('SuperTextLayout') ||
+           type.contains('SuperReader') ||
+           type.contains('QuillEditor') ||
+           type.contains('EditableText') ||
+           // Menu items (when menus are open)
+           type.contains('PopupMenuItem') ||
+           type.contains('DropdownMenuItem') ||
+           type.contains('MenuItemButton') ||
+           type.contains('SubmenuButton') ||
+           type.contains('MenuAnchor') ||
+           // Drawer components
+           type.contains('DrawerController') ||
+           type.contains('Drawer') ||
+           type.contains('NavigationDrawer') ||
+           type.contains('NavigationRail');
+  }
+
+  /// Check if a widget type is overlay-specific
+  bool _isOverlayWidgetType(String typeName) {
+    return typeName.contains('PopupMenuItem') ||
+           typeName.contains('DropdownMenuItem') ||
+           typeName.contains('MenuItemButton') ||
+           typeName.contains('_DropdownRoute') ||
+           typeName.contains('_PopupMenuRoute') ||
+           typeName.contains('_MenuItem') ||
+           typeName.contains('DropdownButtonFormField') ||
+           typeName.contains('MenuAnchor') ||
+           typeName.contains('SubmenuButton') ||
+           typeName.contains('DrawerController') ||
+           typeName.contains('Drawer') ||
+           typeName.contains('EndDrawer') ||
+           typeName.contains('NavigationDrawer') ||
+           typeName.contains('ModalBarrier') ||
+           typeName.contains('_ModalScope') ||
+           typeName.contains('BottomSheet') ||
+           typeName.contains('Dialog') ||
+           typeName.contains('AlertDialog') ||
+           typeName.contains('SimpleDialog');
+  }
+
+  /// Classify the type of overlay
+  String _classifyOverlayType(String typeName) {
+    if (typeName.contains('Dropdown')) return 'dropdown';
+    if (typeName.contains('PopupMenu')) return 'popup_menu';
+    if (typeName.contains('Menu')) return 'menu';
+    if (typeName.contains('Drawer')) return 'drawer';
+    if (typeName.contains('BottomSheet')) return 'bottom_sheet';
+    if (typeName.contains('Dialog')) return 'dialog';
+    if (typeName.contains('Modal')) return 'modal';
+    return 'overlay';
   }
 
   FapElement? _createElementBasedFapElement(Element element) {

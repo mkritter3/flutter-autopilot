@@ -904,6 +904,199 @@ Useful for debugging and verifying connection to running app.`,
                     properties: {},
                 },
             },
+            // ========================================
+            // RICH TEXT EDITOR SUPPORT
+            // ========================================
+            {
+                name: "discover_rich_text_editors",
+                description: `Discover all rich text editors (SuperEditor, SuperTextLayout, QuillEditor, etc.) in the Flutter widget tree.
+
+Returns a list of detected rich text editors with:
+- id: Unique identifier for the editor
+- editorType: The widget type (e.g., "SuperEditor", "SuperTextLayout")
+- hasEditor: Whether the Editor instance is accessible
+- hasDocument: Whether the Document is accessible
+- bounds: Position and size of the editor
+
+Use this to find rich text editors before attempting text operations.
+For standard TextFields, use list_elements instead.`,
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "enter_rich_text",
+                description: `Enter text into a rich text editor using IME delta simulation.
+
+This is the RECOMMENDED way to enter text into SuperEditor and similar rich text widgets.
+Unlike standard text entry, this simulates keyboard input at the IME level.
+
+Usage:
+1. First, tap the rich text editor to focus it
+2. Then call enter_rich_text with your text
+
+Parameters:
+- text: The text to enter
+- useDelta: Use delta-based entry (default true, recommended for rich editors)
+
+Tips:
+- Focus the editor first! Call tap/tap_at on the editor before entering text
+- If useDelta fails, try useDelta=false for standard typing simulation`,
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        text: {
+                            type: "string",
+                            description: "Text to enter into the focused rich text editor.",
+                        },
+                        useDelta: {
+                            type: "boolean",
+                            description: "Use IME delta simulation (default: true). Set false for fallback typing.",
+                        },
+                    },
+                    required: ["text"],
+                },
+            },
+            // ========================================
+            // MENU / OVERLAY / DRAWER DISCOVERY
+            // ========================================
+            {
+                name: "get_overlay_state",
+                description: `Get the current state of Flutter's overlay system (menus, dialogs, bottom sheets, etc.).
+
+Returns:
+- hasOverlay: Whether any overlay content is visible
+- entryCount: Number of overlay entries
+- contentCount: Number of interactive overlay items
+- content: List of overlay items with type, label, bounds, enabled state
+
+Use this to:
+- Verify a menu/dialog opened after tapping a trigger
+- Find menu items to interact with
+- Debug overlay visibility issues`,
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "wait_for_overlay",
+                description: `Wait for an overlay (menu, dialog, bottom sheet) to appear.
+
+Use after tapping a menu trigger to wait for the menu to animate open.
+
+Parameters:
+- timeoutMs: Maximum time to wait (default: 5000ms)
+- pollIntervalMs: How often to check (default: 50ms)
+
+Returns:
+- found: Whether overlay appeared
+- timedOut: Whether we hit the timeout
+- content: List of overlay items if found`,
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        timeoutMs: {
+                            type: "number",
+                            description: "Maximum time to wait in milliseconds (default: 5000).",
+                        },
+                        pollIntervalMs: {
+                            type: "number",
+                            description: "Polling interval in milliseconds (default: 50).",
+                        },
+                    },
+                },
+            },
+            {
+                name: "get_drawer_state",
+                description: `Get the current state of drawers in the app.
+
+Returns:
+- hasScaffold: Whether a Scaffold widget exists
+- isDrawerOpen: Whether the left/start drawer is open
+- isEndDrawerOpen: Whether the right/end drawer is open
+- anyDrawerOpen: Convenience flag for either drawer being open
+
+Use to verify drawer opened/closed after navigation actions.`,
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "discover_menu_triggers",
+                description: `Find all menu trigger widgets (DropdownButton, PopupMenuButton, MenuAnchor, etc.).
+
+Returns a list of menu triggers with:
+- id: Unique identifier
+- type: Trigger type (dropdown, popupMenu, menuAnchor, drawer)
+- label: Associated label/hint if available
+- bounds: Position for tapping
+
+Use this to find hamburger menus, dropdown buttons, and other menu triggers
+before tapping them to open menus.`,
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "open_drawer",
+                description: `Programmatically open the app's drawer.
+
+Parameters:
+- endDrawer: If true, opens the right/end drawer instead of left/start (default: false)
+
+Use when you need to open a drawer without finding and tapping the hamburger icon.
+The app must have a Scaffold with a drawer configured.`,
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        endDrawer: {
+                            type: "boolean",
+                            description: "Open the end drawer (right side) instead of start drawer. Default: false",
+                        },
+                    },
+                },
+            },
+            {
+                name: "close_drawer",
+                description: `Close any open drawer in the app.
+
+Note: Drawers are typically closed via back navigation or tapping outside.
+This method checks the drawer state and provides guidance.`,
+                inputSchema: {
+                    type: "object",
+                    properties: {},
+                },
+            },
+            {
+                name: "get_elements_by_category",
+                description: `Get UI elements filtered by their category.
+
+Categories:
+- menu: PopupMenu, DropdownMenu widgets
+- menuItem: Individual menu items
+- drawer: Drawer widgets
+- dialog: Dialog, AlertDialog widgets
+- richEditor: SuperEditor, QuillEditor, etc.
+- textField: TextField, TextFormField
+- button: Various button types
+- standard: Other elements
+
+Use to quickly find specific types of UI components.`,
+                inputSchema: {
+                    type: "object",
+                    properties: {
+                        category: {
+                            type: "string",
+                            description: "Category to filter by: menu, menuItem, drawer, dialog, richEditor, textField, button, standard",
+                        },
+                    },
+                    required: ["category"],
+                },
+            },
         ],
     };
 });
@@ -1264,6 +1457,83 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 const info = await vmService.getVmInfo();
                 return {
                     content: [{ type: "text", text: JSON.stringify(info, null, 2) }],
+                };
+            }
+
+            // ========================================
+            // RICH TEXT EDITOR SUPPORT
+            // ========================================
+
+            case "discover_rich_text_editors": {
+                const result = await fap.call("discoverRichTextEditors", {});
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                };
+            }
+
+            case "enter_rich_text": {
+                const { text, useDelta } = request.params.arguments as { text: string; useDelta?: boolean };
+                const result = await fap.call("enterRichText", { text, useDelta: useDelta ?? true });
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                    isError: result.success === false,
+                };
+            }
+
+            // ========================================
+            // MENU / OVERLAY / DRAWER DISCOVERY
+            // ========================================
+
+            case "get_overlay_state": {
+                const result = await fap.call("getOverlayState", {});
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                };
+            }
+
+            case "wait_for_overlay": {
+                const { timeoutMs, pollIntervalMs } = request.params.arguments as { timeoutMs?: number; pollIntervalMs?: number };
+                const result = await fap.call("waitForOverlay", { timeoutMs, pollIntervalMs });
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                };
+            }
+
+            case "get_drawer_state": {
+                const result = await fap.call("getDrawerState", {});
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                };
+            }
+
+            case "discover_menu_triggers": {
+                const result = await fap.call("discoverMenuTriggers", {});
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                };
+            }
+
+            case "open_drawer": {
+                const { endDrawer } = request.params.arguments as { endDrawer?: boolean };
+                const result = await fap.call("openDrawer", { endDrawer: endDrawer ?? false });
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                    isError: result.success === false,
+                };
+            }
+
+            case "close_drawer": {
+                const result = await fap.call("closeDrawer", {});
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
+                };
+            }
+
+            case "get_elements_by_category": {
+                const { category } = request.params.arguments as { category: string };
+                const result = await fap.call("getElementsByCategory", { category });
+                return {
+                    content: [{ type: "text", text: JSON.stringify(result, null, 2) }],
                 };
             }
 
