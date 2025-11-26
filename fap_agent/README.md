@@ -10,7 +10,7 @@ Add to your `pubspec.yaml`:
 dependencies:
   fap_agent:
     git:
-      url: https://github.com/mkritter3/flutter-agent-protocol.git
+      url: https://github.com/mkritter3/flutter-autopilot.git
       path: fap_agent
 ```
 
