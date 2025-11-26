@@ -150,12 +150,12 @@ class FapRpcHandlerImpl implements FapRpcHandler {
 
         if (elements.isNotEmpty) {
           final element = elements.first;
-          if (element.isInteractable) {
+          if (element.isInteractable && element.node != null) {
             if (tapFirst) {
               await _executor.tap(element.globalRect, semanticsNode: element.node);
               await Future.delayed(const Duration(milliseconds: 100));
             }
-            await _executor.enterText(element.node, text);
+            await _executor.enterText(element.node!, text);
             strategyUsed = 'selector';
             return {'status': 'text_entered', 'text': text, 'strategy': strategyUsed};
           }
@@ -192,8 +192,8 @@ class FapRpcHandlerImpl implements FapRpcHandler {
         final elements = _indexer.find(Selector.parse(selectorString));
         if (elements.isNotEmpty) {
           final element = elements.first;
-          if (element.isInteractable) {
-            await _executor.enterText(element.node, text);
+          if (element.isInteractable && element.node != null) {
+            await _executor.enterText(element.node!, text);
             strategyUsed = 'selector';
             return {'status': 'text_set', 'text': text, 'strategy': strategyUsed};
           }
@@ -227,8 +227,14 @@ class FapRpcHandlerImpl implements FapRpcHandler {
           'Element is not interactable: $selectorString',
         );
       }
+      if (element.node == null) {
+        throw json_rpc.RpcException(
+          103,
+          'Element has no semantics node (element-based discovery): $selectorString',
+        );
+      }
 
-      await _executor.setSelection(element.node, base, extent);
+      await _executor.setSelection(element.node!, base, extent);
       return {'status': 'selection_set', 'base': base, 'extent': extent};
     });
 
