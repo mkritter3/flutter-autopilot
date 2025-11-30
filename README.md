@@ -15,10 +15,46 @@ FAP is a protocol and set of tools that enables AI agents to interact with Flutt
 
 ## Quick Start
 
-1. **Add Dependency**: Add `fap_agent` to your Flutter app.
-2. **Initialize**: Call `FapAgent.init()` in `main.dart`.
-3. **Run**: Run your Flutter app.
-4. **Connect**: Use `fap_mcp` or `fap_client` to start controlling your app!
+### 1. Setup the MCP Server
+
+```bash
+git clone https://github.com/mkritter3/flutter-autopilot.git
+cd flutter-autopilot
+./setup.sh
+```
+
+The setup script will:
+- Build `fap_client` and `fap_mcp`
+- Optionally configure Claude Code MCP server
+
+### 2. Add FAP to Your Flutter App
+
+Add the dependency to your `pubspec.yaml`:
+
+```yaml
+dependencies:
+  fap_agent:
+    git:
+      url: https://github.com/mkritter3/flutter-autopilot.git
+      path: fap_agent
+```
+
+Initialize in your `main.dart`:
+
+```dart
+import 'package:fap_agent/fap_agent.dart';
+
+void main() {
+  FapAgent.init(const FapConfig(port: 9001, enabled: true));
+  runApp(const MyApp());
+}
+```
+
+### 3. Connect
+
+1. Run your Flutter app
+2. In Claude Code, run `/fap-setup` to verify the connection
+3. Start automating!
 
 ## Architecture
 
